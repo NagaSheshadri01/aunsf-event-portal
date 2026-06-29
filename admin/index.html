@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AUNSF Organizer Management Portal</title>
+  <title>AUNSF Master Operations Console</title>
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen p-4 md:p-8">
 
   <div class="max-w-7xl mx-auto space-y-6">
     
-    <!-- Unified Operations Control Hub Grid Panel Frame Header -->
+    <!-- Top Operations Header Command Bar Control Hub Layout Panel -->
     <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between bg-slate-800 p-6 rounded-2xl border border-slate-700/60 shadow-xl gap-4">
       <div>
         <h1 class="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">AUNSF Event Master Operations Console</h1>
@@ -18,16 +18,16 @@
       </div>
       
       <div class="flex flex-wrap items-center gap-3">
-        <!-- Variable Ticket Revenue Cost Allocation Configurations -->
+        <!-- Variable Cost Per Head Allocations Configuration Input Box Field -->
         <div class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 flex items-center gap-2">
-          <label for="costPerPersonInput" class="text-xs font-bold text-purple-400 whitespace-nowrap uppercase tracking-wider">Cost per head (₹):</label>
+          <label for="costPerPersonInput" class="text-xs font-black text-purple-400 whitespace-nowrap uppercase tracking-wider">COST PER HEAD (₹):</label>
           <input type="number" id="costPerPersonInput" value="1000" min="0" step="50" 
             class="bg-transparent text-sm font-black text-slate-100 outline-none w-20 text-center focus:ring-1 focus:ring-purple-500 rounded">
         </div>
         <button id="viewToggleBtn" class="bg-purple-600 hover:bg-purple-500 font-bold text-xs px-4 py-2.5 rounded-xl shadow transition tracking-wide cursor-pointer">
           📊 Switch to Attendance Lookover
         </button>
-        <button id="exportCsvBtn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3 py-2.5 rounded-xl transition cursor-pointer shadow">
+        <button id="exportCsvBtn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition cursor-pointer shadow">
           📥 Export CSV Pass Sheet
         </button>
         <button id="refreshBtn" class="bg-blue-600 hover:bg-blue-500 font-bold text-xs px-4 py-2.5 rounded-xl shadow transition cursor-pointer">
@@ -36,7 +36,7 @@
       </div>
     </div>
 
-    <!-- Analytics Dashboard Cards Section Grid Layer -->
+    <!-- Analytics Dashboard Counter Cards Layer Panel Frame Grid Row -->
     <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
       <div class="bg-slate-800 p-4 rounded-xl border border-slate-700/50 shadow">
         <div class="text-[10px] text-slate-400 uppercase font-black tracking-wider">Total Registrations</div>
@@ -58,13 +58,13 @@
         <div class="text-[10px] text-blue-400 uppercase font-black tracking-wider">Checked In Attendance</div>
         <div id="countCheckedIn" class="text-2xl font-black mt-1 text-blue-400">0</div>
       </div>
-      <div class="bg-slate-800 p-4 rounded-xl border border-gradient-to-b border-purple-500/30 shadow relative overflow-hidden bg-gradient-to-b from-slate-800 to-purple-950/20">
+      <div class="bg-slate-800 p-4 border border-purple-500/30 rounded-xl shadow bg-gradient-to-b from-slate-800 to-purple-950/20">
         <div class="text-[10px] text-purple-400 uppercase font-black tracking-wider">Revenue Collected</div>
         <div id="revenueCollected" class="text-2xl font-black mt-1 text-purple-400">₹0</div>
       </div>
     </div>
 
-    <!-- Live Segment Matrix Combinatorial Filtering Control Toolbar Panels -->
+    <!-- Live Multi-Criteria Input Select Multi-Filter Control Grid Panel Row -->
     <div class="bg-slate-800 p-4 rounded-xl border border-slate-700/50 shadow-lg space-y-3">
       <div class="text-xs font-bold text-slate-400 uppercase tracking-widest select-none">Multi-Criteria Evaluation Query System Filters</div>
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
@@ -82,7 +82,7 @@
             <option value="Pending">Pending Verification</option>
             <option value="Approved">Approved Status</option>
             <option value="Rejected">Rejected Status</option>
-            <option value="Checked-in">Checked-In Passports</option>
+            <option value="Checked-in">Checked-In Attendance</option>
             <option value="Duplicate">Duplicate Flagged Rows</option>
           </select>
         </div>
@@ -115,56 +115,44 @@
       </div>
     </div>
 
-    <!-- Analytical Demographics Breakdown Section Layer Display Boxes -->
+    <!-- Distribution Metric Graphs Sidebar and Master Datagrid Dual Column Panel Grid Frame -->
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
       
-      <!-- Side Metrics Distribution Ledger Widgets -->
+      <!-- Metrics Allocation Ledgers Sidebar Container Widget Box Stack -->
       <div class="lg:col-span-1 space-y-4">
         
-        <!-- College Wise Demographics Card -->
         <div class="bg-slate-800 border border-slate-700/50 rounded-xl p-4 shadow">
           <h3 class="text-xs font-black text-slate-400 tracking-wider uppercase border-b border-slate-700 pb-2 mb-2">College Distributions</h3>
-          <div class="space-y-1.5 max-h-36 overflow-y-auto text-xs font-mono" id="distributionCollegeArea">
-            <p class="text-slate-500 italic">No metrics parsed yet...</p>
-          </div>
+          <div class="space-y-1.5 max-h-36 overflow-y-auto text-xs font-mono" id="distributionCollegeArea"></div>
         </div>
 
-        <!-- Branch Wise Demographics Card -->
         <div class="bg-slate-800 border border-slate-700/50 rounded-xl p-4 shadow">
           <h3 class="text-xs font-black text-slate-400 tracking-wider uppercase border-b border-slate-700 pb-2 mb-2">Branch Distributions</h3>
-          <div class="space-y-1.5 max-h-36 overflow-y-auto text-xs font-mono" id="distributionBranchArea">
-            <p class="text-slate-500 italic">No metrics parsed yet...</p>
-          </div>
+          <div class="space-y-1.5 max-h-36 overflow-y-auto text-xs font-mono" id="distributionBranchArea"></div>
         </div>
 
-        <!-- Cohort Year Distribution Card -->
         <div class="bg-slate-800 border border-slate-700/50 rounded-xl p-4 shadow">
           <h3 class="text-xs font-black text-slate-400 tracking-wider uppercase border-b border-slate-700 pb-2 mb-2">Batch Distributions</h3>
-          <div class="space-y-1.5 max-h-36 overflow-y-auto text-xs font-mono" id="distributionYearArea">
-            <p class="text-slate-500 italic">No metrics parsed yet...</p>
-          </div>
+          <div class="space-y-1.5 max-h-36 overflow-y-auto text-xs font-mono" id="distributionYearArea"></div>
         </div>
 
-        <!-- Registration Daily Logs Trend Ledger -->
         <div class="bg-slate-800 border border-slate-700/50 rounded-xl p-4 shadow">
           <h3 class="text-xs font-black text-slate-400 tracking-wider uppercase border-b border-slate-700 pb-2 mb-2">Daily Intake History Trends</h3>
-          <div class="space-y-1.5 max-h-40 overflow-y-auto text-xs font-mono" id="distributionTrendsArea">
-            <p class="text-slate-500 italic">No metrics parsed yet...</p>
-          </div>
+          <div class="space-y-1.5 max-h-40 overflow-y-auto text-xs font-mono" id="distributionTrendsArea"></div>
         </div>
 
       </div>
 
-      <!-- Master Data Ledger Datagrid Grid Frame Container Block Area -->
-      <div class="lg:col-span-3 bg-slate-800 rounded-xl border border-slate-700/50 overflow-hidden shadow-2xl flex flex-col justify-between">
+      <!-- Main Database Reactive Datagrid Core Container Box Frame -->
+      <div class="lg:col-span-3 bg-slate-800 rounded-2xl border border-slate-700/60 overflow-hidden shadow-2xl flex flex-col justify-between">
         <div class="overflow-x-auto w-full">
           <table class="w-full text-left border-collapse">
             <thead id="tableHeaderBlock" class="bg-slate-950/50 text-slate-300 uppercase text-[10px] font-black tracking-widest border-b border-slate-700/60">
-              <!-- Rendered programmatically by browser compilation actions via state controls -->
+              <!-- Dynamically injected via script compilers based on runtime layout state selections -->
             </thead>
             <tbody id="tableBodyBlock" class="divide-y divide-slate-700/40 text-xs text-slate-300 font-medium">
               <tr>
-                <td colspan="8" class="text-center py-20 text-slate-500 font-bold animate-pulse tracking-wide">Syncing local data structures...</td>
+                <td colspan="8" class="text-center py-24 text-slate-500 font-bold animate-pulse tracking-wide">Awaiting system script sync compilation loops...</td>
               </tr>
             </tbody>
           </table>
