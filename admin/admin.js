@@ -3,28 +3,36 @@ const BACKEND_API_URL = "https://script.google.com/macros/s/AKfycby5bz0GI20VxLh_
 let masterRecordsCache = [];
 
 window.onload = () => {
-  // Instantly flip the table text to confirm JavaScript file has loaded successfully
-  document.getElementById('tableBody').innerHTML = `<tr><td colspan="6" class="text-center py-12 text-slate-500 animate-pulse font-medium">Fetching secure records...</td></tr>`;
   loadTableData();
   document.getElementById('refreshBtn').addEventListener('click', loadTableData);
   document.getElementById('searchInput').addEventListener('input', handleSearch);
 };
 
+// Unified POST helper to match your working scan logic
+async function makeApiCall(payload) {
+  const response = await fetch(BACKEND_API_URL, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+  return await response.json();
+}
+
 async function loadTableData() {
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = `<tr><td colspan="6" class="text-center py-12 text-slate-500 animate-pulse font-medium">Fetching secure records...</td></tr>`;
+  
   try {
-    // Switch to clean GET query request to bypass browser cross-origin policy block structures entirely
-    const response = await fetch(`${BACKEND_API_URL}?action=getRecords`);
-    const data = await response.json();
-    
+    const data = await makeApiCall({ action: "getRecords" });
     if (data.status === "success") {
       masterRecordsCache = data.records;
       calculateMetrics(masterRecordsCache);
       renderTable(masterRecordsCache);
     } else {
-      document.getElementById('tableBody').innerHTML = `<tr><td colspan="6" class="text-center py-12 text-rose-400 font-medium">Error: ${data.message}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center py-12 text-rose-400 font-medium">Error: ${data.message}</td></tr>`;
     }
   } catch (error) {
-    document.getElementById('tableBody').innerHTML = `<tr><td colspan="6" class="text-center py-12 text-rose-400 font-medium">Failed to connect to backend API instance. Check console logs.</td></tr>`;
+    console.error(error);
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-12 text-rose-400 font-medium">Failed to connect to Google API infrastructure.</td></tr>`;
   }
 }
 
@@ -70,14 +78,14 @@ function renderTable(records) {
 }
 
 async function executeAction(rowNumber, action) {
-  if (!confirm(`Execute state modification [${action.toUpperCase()}] on row line #${rowNumber}?`)) return;
+  if (!confirm(`Execute operational state modification [${action.toUpperCase()}] on record line #${rowNumber}?`)) return;
+  
   try {
-    const response = await fetch(`${BACKEND_API_URL}?action=${action}&rowNumber=${rowNumber}`);
-    const result = await response.json();
+    const result = await makeApiCall({ action: action, rowNumber: rowNumber });
     alert(result.message);
     loadTableData(); 
   } catch (error) {
-    alert("Action processing break: " + error);
+    alert("Operational Execution Failure Exception: " + error);
   }
 }
 
