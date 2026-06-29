@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AUNSF Gate Verification Scanner</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-center p-4">
+
+  <div class="max-w-md w-full bg-slate-800 rounded-2xl border border-slate-700 p-6 shadow-2xl text-center space-y-6">
+    <div>
+      <h1 class="text-xl font-bold tracking-tight">Gate Admission Scanner</h1>
+      <p class="text-slate-400 text-xs mt-1">Authorized Event Crew Double-Entry Prevention Module</p>
+    </div>
+
+    <div class="overflow-hidden rounded-xl bg-slate-950 border border-slate-700 relative aspect-square">
+      <div id="reader" class="w-full h-full"></div>
+    </div>
+
+    <div id="resultBox" class="p-4 rounded-xl text-sm font-semibold transition hidden">
+      <p id="resultMessage">System scanning initialized...</p>
+    </div>
+
+    <div class="text-xs text-slate-500 font-mono">
+      Center participant ticket QR code barcode asset clearly within viewport crosshairs.
+    </div>
+  </div>
+
+  <script src="scan.js"></script>
+</body>
+</html>

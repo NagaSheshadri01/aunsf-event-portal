@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AUNSF Organizer Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-4 md:p-8">
+
+  <div class="max-w-7xl mx-auto space-y-6">
+    
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between bg-slate-800 p-6 rounded-xl border border-slate-700/50 gap-4">
+      <div>
+        <h1 class="text-2xl font-bold tracking-tight">AUNSF Admin Management Dashboard</h1>
+        <p class="text-slate-400 text-sm mt-0.5">Real-Time Registration Verification & Ticket Queue</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <input type="text" id="searchInput" placeholder="Search by Name, UTR, or ID..." 
+          class="bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-blue-500 w-64 transition">
+        <button id="refreshBtn" class="bg-blue-600 hover:bg-blue-500 font-semibold text-sm px-4 py-2 rounded-lg shadow transition cursor-pointer">
+          🔄 Refresh
+        </button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700/50">
+        <div class="text-xs text-slate-400 uppercase font-bold">Total Enrolled</div>
+        <div id="countTotal" class="text-2xl font-extrabold mt-1 text-slate-100">-</div>
+      </div>
+      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700/50">
+        <div class="text-xs text-slate-400 uppercase font-bold text-amber-400">Pending Review</div>
+        <div id="countPending" class="text-2xl font-extrabold mt-1 text-amber-400">-</div>
+      </div>
+      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700/50">
+        <div class="text-xs text-slate-400 uppercase font-bold text-emerald-400">Approved Tickets</div>
+        <div id="countApproved" class="text-2xl font-extrabold mt-1 text-emerald-400">-</div>
+      </div>
+      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700/50">
+        <div class="text-xs text-slate-400 uppercase font-bold text-blue-400">Checked In</div>
+        <div id="countCheckedIn" class="text-2xl font-extrabold mt-1 text-blue-400">-</div>
+      </div>
+    </div>
+
+    <div class="bg-slate-800 rounded-xl border border-slate-700/50 overflow-hidden shadow-2xl">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-slate-950/40 text-slate-300 uppercase text-xs font-bold tracking-wider border-b border-slate-700/60">
+              <th class="px-6 py-4">Participant Details</th>
+              <th class="px-6 py-4">Branch & Year</th>
+              <th class="px-6 py-4">UTR Reference</th>
+              <th class="px-6 py-4">Receipt</th>
+              <th class="px-6 py-4">Ticket Status</th>
+              <th class="px-6 py-4 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody" class="divide-y divide-slate-700/40 text-sm text-slate-300">
+            <tr>
+              <td colspan="6" class="text-center py-12 text-slate-500 animate-pulse font-medium">Awaiting manual data pool initialization refresh...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+</html>
