@@ -1,10 +1,10 @@
-const BACKEND_API_URL = "https://script.google.com/macros/s/AKfycby5bz0GI20VxLh_FQOESgzX9V1N54KaPxHuDKlSZT_uu7rswK8QfU0gbxW4k3BSCfqpXQ/exec"; 
+const BACKEND_API_URL = "YOUR_GOOGLE_APPS_SCRIPT_URL_HERE"; 
 
 let masterRecordsCache = [];
-let dashboardViewMode = "registration"; // Toggles: "registration" or "attendance"
+let dashboardViewMode = "registration"; // Configuration states: "registration" or "attendance"
 
 window.onload = () => {
-  // Pull persistent disk cache data immediately to execute 0ms visual rendering frames
+  // Read local browser storage arrays instantly to remove rendering overhead frames
   const cachedLocalRecordDataString = localStorage.getItem('aunsf_master_system_cache');
   if (cachedLocalRecordDataString) {
     try {
@@ -12,25 +12,26 @@ window.onload = () => {
       calculateSystemMetricsAndDistributions();
       buildDynamicAlphaSortedFilterDropdowns();
       renderTargetedDataGrid();
-    } catch (err) { console.error("Initial browser buffer parsing fault: ", err); }
+    } catch (err) { console.error("Initial buffer read error frame: ", err); }
   }
 
-  // Bind interface execution listener components
+  // Bind active DOM button interaction event loops listeners
   document.getElementById('refreshBtn').addEventListener('click', synchronizeCloudLedger);
   document.getElementById('viewToggleBtn').addEventListener('click', toggleViewDisplayMatrix);
   document.getElementById('exportCsvBtn').addEventListener('click', processCsvExportTask);
+  document.getElementById('clearFiltersBtn').addEventListener('click', clearAllActiveFilters);
   document.getElementById('costPerPersonInput').addEventListener('input', () => {
-    updateFinancialCalculations();
+    calculateSystemMetricsAndDistributions();
     renderTargetedDataGrid();
   });
   
-  // Wire unified system drop-downs and input fields to immediately filter rows reactively
+  // Wire dynamic multi-dropdown items to filter rows reactively on adjustment
   ['searchInput', 'filterStatus', 'filterCollege', 'filterBranch', 'filterYear'].forEach(id => {
     document.getElementById(id).addEventListener('change', renderTargetedDataGrid);
     document.getElementById(id).addEventListener('input', renderTargetedDataGrid);
   });
 
-  synchronizeCloudLedger(); // Fire structural update streams asynchronously in background
+  synchronizeCloudLedger(); // Launch secure sheet updates asynchronously in the background
 };
 
 async function synchronizeCloudLedger() {
@@ -52,25 +53,23 @@ async function synchronizeCloudLedger() {
       calculateSystemMetricsAndDistributions();
       renderTargetedDataGrid();
     } else {
-      alert("Spreadsheet database transmission block error: " + parsedResult.message);
+      alert("Database access error: " + parsedResult.message);
     }
   } catch (error) {
-    console.error("Critical core background connection break trace: ", error);
+    console.error("Critical API architecture transmission break trace: ", error);
   } finally {
     btn.innerText = "🔄 Refresh";
     btn.disabled = false;
   }
 }
 
-function updateFinancialCalculations() {
-  const variableHeadCostAmount = parseFloat(document.getElementById('costPerPersonInput').value) || 0;
-  
-  // FIXED REVENUE: Revenue evaluates across BOTH historical cached rows and incoming real-time records
-  // Filter for all valid approved paying profiles regardless of their current check-in stance
-  const certifiedIncomeGeneratorsCount = masterRecordsCache.filter(r => r.status === 'Approved' || r.status === 'Checked-in').length;
-  const compositeGrossRevenueCalculated = certifiedIncomeGeneratorsCount * variableHeadCostAmount;
-  
-  document.getElementById('revenueCollected').innerText = "₹" + compositeGrossRevenueCalculated.toLocaleString('en-IN');
+function clearAllActiveFilters() {
+  document.getElementById('searchInput').value = "";
+  document.getElementById('filterStatus').value = "All";
+  document.getElementById('filterCollege').value = "All";
+  document.getElementById('filterBranch').value = "All";
+  document.getElementById('filterYear').value = "All";
+  renderTargetedDataGrid();
 }
 
 function buildDynamicAlphaSortedFilterDropdowns() {
@@ -84,65 +83,110 @@ function buildDynamicAlphaSortedFilterDropdowns() {
   let trackedUniqueBranchesSet = new Set();
 
   masterRecordsCache.forEach(r => {
-    if (r.college && r.college.trim() !== "") trackedUniqueCollegesSet.add(r.college.trim());
-    if (r.branch && r.branch.trim() !== "") trackedUniqueBranchesSet.add(r.branch.trim());
+    // REQUIREMENT FIX: Convert dropdown entries to uppercase to handle string differences perfectly
+    if (r.college && r.college.trim() !== "") trackedUniqueCollegesSet.add(r.college.trim().toUpperCase());
+    if (r.branch && r.branch.trim() !== "") trackedUniqueBranchesSet.add(r.branch.trim().toUpperCase());
   });
 
-  // FIXED DROPDOWNS: Deduplicate case-insensitively and force alphabetical ascending sort order maps
-  const alphabeticallySortedCollegesArray = Array.from(trackedUniqueCollegesSet).sort((a, b) => 
-    a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true })
-  );
-  const alphabeticallySortedBranchesArray = Array.from(trackedUniqueBranchesSet).sort((a, b) => 
-    a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true })
-  );
+  const sortedCollegesArray = Array.from(trackedUniqueCollegesSet).sort((a, b) => a.localeCompare(b));
+  const sortedBranchesArray = Array.from(trackedUniqueBranchesSet).sort((a, b) => a.localeCompare(b));
 
   collegeDropdownElement.innerHTML = '<option value="All">All Institutions</option>' + 
-    alphabeticallySortedCollegesArray.map(c => `<option value="${c}">${c}</option>`).join('');
+    sortedCollegesArray.map(c => `<option value="${c}">${c}</option>`).join('');
   
   branchDropdownElement.innerHTML = '<option value="All">All Specializations</option>' + 
-    alphabeticallySortedBranchesArray.map(b => `<option value="${b}">${b}</option>`).join('');
+    sortedBranchesArray.map(b => `<option value="${b}">${b}</option>`).join('');
 
-  // Re-assign previous selections cleanly if they persist in the newly computed arrays
-  if (alphabeticallySortedCollegesArray.includes(currentlySelectedCollege)) collegeDropdownElement.value = currentlySelectedCollege;
-  if (alphabeticallySortedBranchesArray.includes(currentlySelectedBranch)) branchDropdownElement.value = currentlySelectedBranch;
+  if (sortedCollegesArray.includes(currentlySelectedCollege)) collegeDropdownElement.value = currentlySelectedCollege;
+  if (sortedBranchesArray.includes(currentlySelectedBranch)) branchDropdownElement.value = currentlySelectedBranch;
 }
 
 function calculateSystemMetricsAndDistributions() {
-  document.getElementById('countTotal').innerText = masterRecordsCache.length;
-  document.getElementById('countPending').innerText = masterRecordsCache.filter(r => r.status === 'Pending').length;
-  document.getElementById('countApproved').innerText = masterRecordsCache.filter(r => r.status === 'Approved' || r.status === 'Checked-in').length;
-  document.getElementById('countRejected').innerText = masterRecordsCache.filter(r => r.status === 'Rejected').length;
-  document.getElementById('countCheckedIn').innerText = masterRecordsCache.filter(r => r.status === 'Checked-in').length;
-  
-  updateFinancialCalculations();
+  const costPerHead = parseFloat(document.getElementById('costPerPersonInput').value) || 0;
 
-  // Populate left side allocation widgets lists arrays
+  // 1. Assign Basic Counters
+  const totalCount = masterRecordsCache.length;
+  const pendingCount = masterRecordsCache.filter(r => r.status === 'Pending').length;
+  const approvedCount = masterRecordsCache.filter(r => r.status === 'Approved' || r.status === 'Checked-in').length;
+  const rejectedCount = masterRecordsCache.filter(r => r.status === 'Rejected').length;
+  const checkedInCount = masterRecordsCache.filter(r => r.status === 'Checked-in').length;
+
+  document.getElementById('countTotal').innerText = totalCount;
+  document.getElementById('countPending').innerText = pendingCount;
+  document.getElementById('countApproved').innerText = approvedCount;
+  document.getElementById('countRejected').innerText = rejectedCount;
+  document.getElementById('countCheckedIn').innerText = checkedInCount;
+  
+  // Dynamic Revenue Matrix: Evaluates across approved and checked in records 
+  const aggregateRevenueCalculated = approvedCount * costPerHead;
+  document.getElementById('revenueCollected').innerText = "₹" + aggregateRevenueCalculated.toLocaleString('en-IN');
+
+  // 2. Clear out allocation layout widget data areas
   const collegeArea = document.getElementById('distributionCollegeArea');
   const branchArea = document.getElementById('distributionBranchArea');
   const yearArea = document.getElementById('distributionYearArea');
   const trendsArea = document.getElementById('distributionTrendsArea');
 
-  let collegeDistributionMapping = {}, branchDistributionMapping = {}, cohortYearDistributionMapping = {}, dailyRegistrationTrendMapping = {};
+  let colCountMap = {}, brCountMap = {}, yrCountMap = {}, trendCountMap = {};
+  let colRevMap = {}, brRevMap = {}, yrRevMap = {};
 
   masterRecordsCache.forEach(r => {
     if (r.status !== 'Duplicate') {
-      collegeDistributionMapping[r.college] = (collegeDistributionMapping[r.college] || 0) + 1;
-      branchDistributionMapping[r.branch] = (branchDistributionMapping[r.branch] || 0) + 1;
-      cohortYearDistributionMapping[r.year] = (cohortYearDistributionMapping[r.year] || 0) + 1;
+      // REQUIREMENT FIX: Forces absolute upper-case transformation across text evaluation rows
+      const cleanColKey = (r.college || 'N/A').trim().toUpperCase();
+      const cleanBrKey = (r.branch || 'N/A').trim().toUpperCase();
+      const cleanYrKey = "YEAR " + (r.year || 'N/A').toString().trim().toUpperCase();
       
-      let simplifiedDateStringKey = "Unknown Date";
-      if (r.timestamp) {
-        let timestampSegmentSplits = r.timestamp.split(",");
-        if (timestampSegmentSplits.length > 0) simplifiedDateStringKey = timestampSegmentSplits[0].trim();
+      const earnsRevenue = (r.status === 'Approved' || r.status === 'Checked-in');
+
+      // Accumulate mapping statistics values
+      colCountMap[cleanColKey] = (colCountMap[cleanColKey] || 0) + 1;
+      brCountMap[cleanBrKey] = (brCountMap[cleanBrKey] || 0) + 1;
+      yrCountMap[cleanYrKey] = (yrCountMap[cleanYrKey] || 0) + 1;
+
+      if (earnsRevenue) {
+        colRevMap[cleanColKey] = (colRevMap[cleanColKey] || 0) + costPerHead;
+        brRevMap[cleanBrKey] = (brRevMap[cleanBrKey] || 0) + costPerHead;
+        yrRevMap[cleanYrKey] = (yrRevMap[cleanYrKey] || 0) + costPerHead;
       }
-      dailyRegistrationTrendMapping[simplifiedDateStringKey] = (dailyRegistrationTrendMapping[simplifiedDateStringKey] || 0) + 1;
+
+      let dateKey = "Unknown Date";
+      if (r.timestamp) {
+        let splits = r.timestamp.split(",");
+        if (splits.length > 0) dateKey = splits[0].trim();
+      }
+      trendCountMap[dateKey] = (trendCountMap[dateKey] || 0) + 1;
     }
   });
 
-  collegeArea.innerHTML = Object.keys(collegeDistributionMapping).map(k => `<div class="flex items-center justify-between py-0.5 border-b border-slate-700/30"><span>${k || 'N/A'}</span><span class="text-blue-400 font-bold">${collegeDistributionMapping[k]}</span></div>`).join('') || '<p class="text-slate-500 italic">No college rows loaded</p>';
-  branchArea.innerHTML = Object.keys(branchDistributionMapping).map(k => `<div class="flex items-center justify-between py-0.5 border-b border-slate-700/30"><span>${k || 'N/A'}</span><span class="text-purple-400 font-bold">${branchDistributionMapping[k]}</span></div>`).join('') || '<p class="text-slate-500 italic">No branch rows loaded</p>';
-  yearArea.innerHTML = Object.keys(cohortYearDistributionMapping).map(k => `<div class="flex items-center justify-between py-0.5 border-b border-slate-700/30"><span>Year ${k || 'N/A'}</span><span class="text-emerald-400 font-bold">${cohortYearDistributionMapping[k]}</span></div>`).join('') || '<p class="text-slate-500 italic">No batch rows loaded</p>';
-  trendsArea.innerHTML = Object.keys(dailyRegistrationTrendMapping).map(k => `<div class="flex items-center justify-between py-0.5 border-b border-slate-700/30"><span>${k}</span><span class="text-amber-400 font-bold">${dailyRegistrationTrendMapping[k]} row entries</span></div>`).join('') || '<p class="text-slate-500 italic">No trends captured</p>';
+  // REQUIREMENT FIX: Display dynamic counts combined with current live financial allocations side-by-side
+  collegeArea.innerHTML = Object.keys(colCountMap).sort().map(k => `
+    <div class="flex items-center justify-between py-1 border-b border-slate-700/30 gap-2">
+      <span class="truncate max-w-[120px] font-bold text-slate-300" title="${k}">${k}</span>
+      <span class="whitespace-nowrap"><span class="text-slate-500">x${colCountMap[k]}</span> <span class="text-blue-400 font-bold">₹${(colRevMap[k] || 0).toLocaleString('en-IN')}</span></span>
+    </div>
+  `).join('') || '<p class="text-slate-500 italic">No college entries</p>';
+
+  branchArea.innerHTML = Object.keys(brCountMap).sort().map(k => `
+    <div class="flex items-center justify-between py-1 border-b border-slate-700/30 gap-2">
+      <span class="truncate max-w-[120px] font-bold text-slate-300" title="${k}">${k}</span>
+      <span class="whitespace-nowrap"><span class="text-slate-500">x${brCountMap[k]}</span> <span class="text-purple-400 font-bold">₹${(brRevMap[k] || 0).toLocaleString('en-IN')}</span></span>
+    </div>
+  `).join('') || '<p class="text-slate-500 italic">No branch entries</p>';
+
+  yearArea.innerHTML = Object.keys(yrCountMap).sort().map(k => `
+    <div class="flex items-center justify-between py-1 border-b border-slate-700/30 gap-2">
+      <span class="font-bold text-slate-300">${k}</span>
+      <span class="whitespace-nowrap"><span class="text-slate-500">x${yrCountMap[k]}</span> <span class="text-emerald-400 font-bold">₹${(yrRevMap[k] || 0).toLocaleString('en-IN')}</span></span>
+    </div>
+  `).join('') || '<p class="text-slate-500 italic">No year entries</p>';
+
+  trendsArea.innerHTML = Object.keys(trendCountMap).map(k => `
+    <div class="flex items-center justify-between py-1 border-b border-slate-700/30">
+      <span>${k}</span>
+      <span class="text-amber-400 font-bold">${trendCountMap[k]} entries</span>
+    </div>
+  `).join('') || '<p class="text-slate-500 italic">No daily trends</p>';
 }
 
 function toggleViewDisplayMatrix() {
@@ -158,9 +202,6 @@ function toggleViewDisplayMatrix() {
 }
 
 function renderTargetedDataGrid() {
-  // Sync analytics widgets allocations automatically every single time a render loop triggers
-  calculateSystemMetricsAndDistributions();
-
   const headBlock = document.getElementById('tableHeaderBlock');
   const bodyBlock = document.getElementById('tableBodyBlock');
   
@@ -170,45 +211,40 @@ function renderTargetedDataGrid() {
   const branchFilterValue = document.getElementById('filterBranch').value;
   const yearFilterValue = document.getElementById('filterYear').value;
 
-  // FIXED MULTI-CRITERIA FILTERS: Processing nested combinatorial logic boundaries across rows
+  // Process data grid filtering checks
   let filteredRecordDataset = masterRecordsCache.filter(row => {
-    // Evaluation 1: Queue Flow Status mapping matches
     if (statusFilterValue !== "All") {
       if (statusFilterValue === "Approved" && row.status !== "Approved" && row.status !== "Checked-in") return false;
       if (statusFilterValue !== "Approved" && row.status !== statusFilterValue) return false;
     }
-    // Evaluation 2: Institution/College selection matching
-    if (collegeFilterValue !== "All" && row.college !== collegeFilterValue) return false;
-    // Evaluation 3: Specialization/Branch selection matching
-    if (branchFilterValue !== "All" && row.branch !== branchFilterValue) return false;
-    // Evaluation 4: Cohort Year selection matching
+    // REQUIREMENT FIX: Match against uppercase normalized choices to prevent grid drop errors
+    if (collegeFilterValue !== "All" && (row.college || '').trim().toUpperCase() !== collegeFilterValue) return false;
+    if (branchFilterValue !== "All" && (row.branch || '').trim().toUpperCase() !== branchFilterValue) return false;
     if (yearFilterValue !== "All" && row.year.toString() !== yearFilterValue.toString()) return false;
     
-    // Evaluation 5: Lookahead text search queries intersections
     if (queryValue) {
-      const compositeUnifiedRowTextContent = [
+      const rowSearchString = [
         row.regId, row.fullName, row.email, row.phone, row.college, row.branch, row.utr
       ].join(" ").toLowerCase();
-      if (!compositeUnifiedRowTextContent.includes(queryValue)) return false;
+      if (!rowSearchString.includes(queryValue)) return false;
     }
-    
     return true;
   });
 
+  // REQUIREMENT FIX: Complete layout revamp utilizing whitespace shields to eradicate text wrapping bugs
   if (dashboardViewMode === "registration") {
-    // Traditional row progression matching spreadsheet array sequences
     filteredRecordDataset.sort((a, b) => a.rowNumber - b.rowNumber);
 
-    headBlock.innerHTML = `
-      <tr>
-        <th class="px-5 py-3">Ticket ID</th>
-        <th class="px-5 py-3">Participant Name / Email</th>
-        <th class="px-5 py-3">College / Branch</th>
-        <th class="px-5 py-3 text-center">Year</th>
-        <th class="px-5 py-3">Transaction UTR</th>
-        <th class="px-5 py-3">Receipt Screenshot</th>
-        <th class="px-5 py-3">Status</th>
-        <th class="px-5 py-3 text-right">Actions</th>
+    headerBlock.innerHTML = `
+      <tr class="whitespace-nowrap">
+        <th class="px-4 py-3.5 w-32">Ticket ID</th>
+        <th class="px-4 py-3.5 w-52">Participant Name / Email</th>
+        <th class="px-4 py-3.5 w-48">College / Branch</th>
+        <th class="px-4 py-3.5 text-center w-12">Year</th>
+        <th class="px-4 py-3.5 w-32">Transaction UTR</th>
+        <th class="px-4 py-3.5 w-28">Receipt</th>
+        <th class="px-4 py-3.5 w-24">Status</th>
+        <th class="px-4 py-3.5 text-right w-36">Actions</th>
       </tr>
     `;
 
@@ -218,27 +254,27 @@ function renderTargetedDataGrid() {
     }
 
     bodyBlock.innerHTML = filteredRecordDataset.map(user => {
-      let identificationPassColumnText = user.regId === "null" || !user.regId ? `<span class="text-slate-600 italic select-none">null</span>` : `<span class="font-mono font-bold text-slate-200 select-all">${user.regId}</span>`;
+      let trID = user.regId === "null" || !user.regId ? `<span class="text-slate-600 italic select-none">null</span>` : `<span class="font-mono font-bold text-slate-200 select-all whitespace-nowrap">${user.regId}</span>`;
       
-      let badgeStyleClassConfiguration = "bg-amber-500/10 text-amber-400 border border-amber-500/20";
-      if (user.status === "Approved") badgeStyleClassConfiguration = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
-      if (user.status === "Rejected") badgeStyleClassConfiguration = "bg-rose-500/10 text-rose-400 border border-rose-500/20";
-      if (user.status === "Checked-in") badgeStyleClassConfiguration = "bg-blue-500/10 text-blue-400 border border-blue-500/20";
-      if (user.status === "Duplicate") badgeStyleClassConfiguration = "bg-purple-500/10 text-purple-400 border border-purple-500/20";
+      let badgeStyleClass = "bg-amber-500/10 text-amber-400 border border-amber-500/20";
+      if (user.status === "Approved") badgeStyleClass = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+      if (user.status === "Rejected") badgeStyleClass = "bg-rose-500/10 text-rose-400 border border-rose-500/20";
+      if (user.status === "Checked-in") badgeStyleClass = "bg-blue-500/10 text-blue-400 border border-blue-500/20";
+      if (user.status === "Duplicate") badgeStyleClass = "bg-purple-500/10 text-purple-400 border border-purple-500/20";
 
       return `
-        <tr class="hover:bg-slate-950/20 transition border-b border-slate-700/20">
-          <td class="px-5 py-3.5">${identificationPassColumnText}</td>
-          <td class="px-5 py-3.5"><div class="font-bold text-slate-100">${user.fullName}</div><div class="text-[10px] text-slate-400 font-mono mt-0.5">${user.email}</div></td>
-          <td class="px-5 py-3.5"><div>${user.college}</div><div class="text-[10px] text-slate-400 mt-0.5">${user.branch}</div></td>
-          <td class="px-5 py-3.5 font-bold text-center w-12">${user.year}</td>
-          <td class="px-5 py-3.5 font-mono text-[11px] tracking-wide text-slate-300">${user.utr}</td>
-          <td class="px-5 py-3.5">${user.screenshot && user.screenshot !== "null" ? `<a href="${user.screenshot}" target="_blank" class="text-blue-400 hover:text-blue-300 font-bold underline inline-flex items-center gap-0.5">🖼️ View Image</a>` : `<span class="text-slate-600 italic select-none">null</span>`}</td>
-          <td class="px-5 py-3.5"><span class="px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${badgeStyleClassConfiguration}">${user.status}</span></td>
-          <td class="px-5 py-3.5 text-right whitespace-nowrap">
+        <tr class="hover:bg-slate-950/20 transition duration-100 border-b border-slate-700/20">
+          <td class="px-4 py-3.5 font-medium">${trID}</td>
+          <td class="px-4 py-3.5"><div class="font-bold text-slate-100 max-w-[190px] truncate" title="${user.fullName}">${user.fullName}</div><div class="text-[10px] text-slate-400 font-mono mt-0.5 max-w-[190px] truncate" title="${user.email}">${user.email}</div></td>
+          <td class="px-4 py-3.5"><div class="uppercase max-w-[180px] truncate font-bold text-slate-300" title="${user.college}">${user.college}</div><div class="uppercase text-[10px] text-slate-400 mt-0.5 max-w-[180px] truncate" title="${user.branch}">${user.branch}</div></td>
+          <td class="px-4 py-3.5 font-black text-center">${user.year}</td>
+          <td class="px-4 py-3.5 font-mono text-[11px] tracking-wide text-slate-300 whitespace-nowrap">${user.utr}</td>
+          <td class="px-4 py-3.5 whitespace-nowrap">${user.screenshot && user.screenshot !== "null" ? `<a href="${user.screenshot}" target="_blank" class="text-blue-400 hover:text-blue-300 font-bold underline inline-flex items-center gap-0.5">🖼️ View Image</a>` : `<span class="text-slate-600 italic select-none">null</span>`}</td>
+          <td class="px-4 py-3.5 whitespace-nowrap"><span class="px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider whitespace-nowrap ${badgeStyleClass}">${user.status === 'Checked-in' ? 'Checked In' : user.status}</span></td>
+          <td class="px-4 py-3.5 text-right whitespace-nowrap">
             ${user.status === 'Pending' ? `
-              <button onclick="dispatchAdminOperationAction(${user.rowNumber}, 'approve')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[10px] uppercase tracking-wider px-2.5 py-1.5 rounded-lg shadow cursor-pointer transition">Approve</button>
-              <button onclick="dispatchAdminOperationAction(${user.rowNumber}, 'reject')" class="bg-rose-600/10 hover:bg-rose-600 text-rose-400 hover:text-white font-black text-[10px] uppercase tracking-wider px-2.5 py-1.5 rounded-lg cursor-pointer transition">Reject</button>
+              <button onclick="dispatchAdminOperationAction(${user.rowNumber}, 'approve')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[10px] uppercase tracking-wider px-2.5 py-1.5 rounded-lg shadow cursor-pointer transition inline-block">Approve</button>
+              <button onclick="dispatchAdminOperationAction(${user.rowNumber}, 'reject')" class="bg-rose-600/10 hover:bg-rose-600 text-rose-400 hover:text-white font-black text-[10px] uppercase tracking-wider px-2.5 py-1.5 rounded-lg cursor-pointer transition inline-block">Reject</button>
             ` : `<span class="text-slate-500 text-[10px] font-mono select-none">Processed</span>`}
           </td>
         </tr>
@@ -246,8 +282,7 @@ function renderTargetedDataGrid() {
     }).join('');
 
   } else {
-    // ATTENDANCE LOOKOVER PRESENTATION PIPELINE
-    // Sort logic constraints: Checked-in items bubble to top by time, non-checked entries sorted sequentially below
+    // Attendance lookover row sorting rules
     filteredRecordDataset.sort((a, b) => {
       let aChecked = a.status === "Checked-in" && a.checkInTime !== "null";
       let bChecked = b.status === "Checked-in" && b.checkInTime !== "null";
@@ -257,35 +292,35 @@ function renderTargetedDataGrid() {
       return a.rowNumber - b.rowNumber;
     });
 
-    headBlock.innerHTML = `
-      <tr>
-        <th class="px-5 py-3">Ticket ID</th>
-        <th class="px-5 py-3">Participant Details</th>
-        <th class="px-5 py-3">Institution & Department</th>
-        <th class="px-5 py-3 text-center">Year</th>
-        <th class="px-5 py-3">Flow Status</th>
-        <th class="px-5 py-3">Checked-In Timestamp</th>
+    headerBlock.innerHTML = `
+      <tr class="whitespace-nowrap">
+        <th class="px-4 py-3.5 w-36">Ticket ID</th>
+        <th class="px-4 py-3.5 w-56">Participant Details</th>
+        <th class="px-4 py-3.5 w-56">Institution & Department</th>
+        <th class="px-4 py-3.5 text-center w-12">Year</th>
+        <th class="px-4 py-3.5 w-28">Flow Status</th>
+        <th class="px-4 py-3.5 w-44">Checked-In Arrival Time</th>
       </tr>
     `;
 
     if (filteredRecordDataset.length === 0) {
-      bodyBlock.innerHTML = `<tr><td colspan="6" class="text-center py-12 text-slate-500 italic font-bold">No gate entry matches found in attendance context.</td></tr>`;
+      bodyBlock.innerHTML = `<tr><td colspan="6" class="text-center py-12 text-slate-500 italic font-bold">No entry verification matches found.</td></tr>`;
       return;
     }
 
     bodyBlock.innerHTML = filteredRecordDataset.map(user => {
-      let badgeStyleClassConfiguration = "bg-slate-700/20 text-slate-400 border border-slate-700/30";
-      if (user.status === "Checked-in") badgeStyleClassConfiguration = "bg-blue-500/10 text-blue-400 border border-blue-500/20";
-      if (user.status === "Approved") badgeStyleClassConfiguration = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+      let badgeStyleClass = "bg-slate-700/20 text-slate-400 border border-slate-700/30";
+      if (user.status === "Checked-in") badgeStyleClass = "bg-blue-500/10 text-blue-400 border border-blue-500/20";
+      if (user.status === "Approved") badgeStyleClass = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
 
       return `
-        <tr class="hover:bg-slate-950/20 transition border-b border-slate-700/20 ${user.status === 'Checked-in' ? 'bg-blue-950/10' : ''}">
-          <td class="px-5 py-3.5 font-mono font-bold text-slate-300">${user.regId === 'null' || !user.regId ? '<span class="text-slate-600 italic select-none">null</span>' : user.regId}</td>
-          <td class="px-5 py-3.5"><div class="font-bold text-slate-100">${user.fullName}</div><div class="text-[10px] text-slate-400 font-mono mt-0.5">${user.phone}</div></td>
-          <td class="px-5 py-3.5"><div>${user.college}</div><div class="text-[10px] text-slate-400 mt-0.5">${user.branch}</div></td>
-          <td class="px-5 py-3.5 font-bold text-center w-12">${user.year}</td>
-          <td class="px-5 py-3.5"><span class="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${badgeStyleClassConfiguration}">${user.status}</span></td>
-          <td class="px-5 py-3.5 font-mono font-black text-slate-100">${user.checkInTime === 'null' || !user.checkInTime ? '<span class="text-slate-600 font-normal italic select-none">null</span>' : `⏱️ ${user.checkInTime}`}</td>
+        <tr class="hover:bg-slate-950/20 transition duration-100 border-b border-slate-700/20 ${user.status === 'Checked-in' ? 'bg-blue-950/10' : ''}">
+          <td class="px-4 py-3.5 font-mono font-bold text-slate-300 whitespace-nowrap">${user.regId === 'null' || !user.regId ? '<span class="text-slate-600 italic select-none">null</span>' : user.regId}</td>
+          <td class="px-4 py-3.5"><div class="font-bold text-slate-100 max-w-[200px] truncate" title="${user.fullName}">${user.fullName}</div><div class="text-[10px] text-slate-400 font-mono mt-0.5" >${user.phone}</div></td>
+          <td class="px-4 py-3.5"><div class="uppercase font-bold text-slate-300 max-w-[200px] truncate" title="${user.college}">${user.college}</div><div class="uppercase text-[10px] text-slate-400 mt-0.5 max-w-[200px] truncate" title="${user.branch}">${user.branch}</div></td>
+          <td class="px-4 py-3.5 font-black text-center">${user.year}</td>
+          <td class="px-4 py-3.5 whitespace-nowrap"><span class="px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap ${badgeStyleClass}">${user.status === 'Checked-in' ? 'Checked In' : user.status}</span></td>
+          <td class="px-4 py-3.5 font-mono font-black text-slate-100 whitespace-nowrap">${user.checkInTime === 'null' || !user.checkInTime ? '<span class="text-slate-600 font-normal italic select-none">null</span>' : `⏱️ ${user.checkInTime}`}</td>
         </tr>
       `;
     }).join('');
@@ -293,7 +328,7 @@ function renderTargetedDataGrid() {
 }
 
 async function dispatchAdminOperationAction(rowNumber, actionName) {
-  if (!confirm(`Execute state modification [${actionName.toUpperCase()}] on row line reference #${rowNumber}?`)) return;
+  if (!confirm(`Execute system validation state change [${actionName.toUpperCase()}] on record reference entry #${rowNumber}?`)) return;
   try {
     const response = await fetch(BACKEND_API_URL, {
       method: 'POST',
@@ -302,19 +337,19 @@ async function dispatchAdminOperationAction(rowNumber, actionName) {
     const result = await response.json();
     alert(result.message);
     synchronizeCloudLedger();
-  } catch (error) { alert("Operational break detail: " + error.toString()); }
+  } catch (error) { alert("API execution crash logs: " + error.toString()); }
 }
 
-// FIXED EXPORT: Standardized vanilla Blob file compilation layout prevents CORS page blocks
+// REQUIREMENT FIX: Core file object blob de-allocation pipeline blocks cross-origin script errors 
 function processCsvExportTask() {
   if (masterRecordsCache.length === 0) {
-    alert("Export task canceled: Data cache buffer contains zero rows.");
+    alert("Export task canceled: Memory buffer contains zero rows.");
     return;
   }
   
-  const headers = ["Timestamp", "Registration ID", "Full Name", "Email Address", "Phone Number", "College", "Branch", "Year", "UPI Transaction ID", "Screenshot Drive Link", "Status", "Check-In Timestamp"];
+  const csvHeadersRow = ["Timestamp", "Registration ID", "Full Name", "Email Address", "Phone Number", "College", "Branch", "Year", "UPI Transaction ID", "Screenshot Drive Link", "Status", "Check-In Timestamp"];
   
-  const formattedRowsContentStrings = masterRecordsCache.map(r => [
+  const sanitizedStringRowsArray = masterRecordsCache.map(r => [
     `"${(r.timestamp || '').replace(/"/g, '""')}"`,
     `"${(r.regId || '').replace(/"/g, '""')}"`,
     `"${(r.fullName || '').replace(/"/g, '""')}"`,
@@ -329,19 +364,17 @@ function processCsvExportTask() {
     `"${(r.checkInTime || '').replace(/"/g, '""')}"`
   ].join(","));
 
-  const aggregatedCsvStringContent = headers.join(",") + "\n" + formattedRowsContentStrings.join("\n");
+  const fullCsvStringContent = csvHeadersRow.join(",") + "\n" + sanitizedStringRowsArray.join("\n");
+  const binaryMemoryBlob = new Blob([fullCsvStringContent], { type: 'text/csv;charset=utf-8;' });
+  const temporaryBlobDownloadUrlPointer = URL.createObjectURL(binaryMemoryBlob);
   
-  // Package data safely inside a browser context binary storage blob object pointer
-  const textBlobFileContextInstance = new Blob([aggregatedCsvStringContent], { type: 'text/csv;charset=utf-8;' });
-  const objectBlobUrlPointer = URL.createObjectURL(textBlobFileContextInstance);
+  const anchorDownloadLink = document.createElement("a");
+  anchorDownloadLink.setAttribute("href", temporaryBlobDownloadUrlPointer);
+  anchorDownloadLink.setAttribute("download", "AUNSF_Master_Event_Report_2026.csv");
+  document.body.appendChild(anchorDownloadLink);
   
-  const virtualAnchorTagElement = document.createElement("a");
-  virtualAnchorTagElement.setAttribute("href", objectBlobUrlPointer);
-  virtualAnchorTagElement.setAttribute("download", "AUNSF_Master_Event_Report_2026.csv");
-  document.body.appendChild(virtualAnchorTagElement);
+  anchorDownloadLink.click(); 
   
-  virtualAnchorTagElement.click(); // Trigger operating system browser downloader
-  
-  document.body.removeChild(virtualAnchorTagElement);
-  URL.revokeObjectURL(objectBlobUrlPointer); // Deallocate active hardware memory footprint chunks
+  document.body.removeChild(anchorDownloadLink);
+  URL.revokeObjectURL(temporaryBlobDownloadUrlPointer); 
 }
