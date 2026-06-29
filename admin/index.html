@@ -3,75 +3,174 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AUNSF Organizer Dashboard</title>
+  <title>AUNSF Organizer Management Portal</title>
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen p-4 md:p-8">
 
   <div class="max-w-7xl mx-auto space-y-6">
     
-    <!-- Top Configuration Header -->
-    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between bg-slate-800 p-6 rounded-xl border border-slate-700/50 gap-4">
+    <!-- Unified Operations Control Hub Grid Panel Frame Header -->
+    <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between bg-slate-800 p-6 rounded-2xl border border-slate-700/60 shadow-xl gap-4">
       <div>
-        <h1 class="text-2xl font-bold tracking-tight">AUNSF Admin Management Dashboard</h1>
-        <p class="text-slate-400 text-sm mt-0.5">Real-Time Registration Verification & Ticket Queue</p>
+        <h1 class="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">AUNSF Event Master Operations Console</h1>
+        <p class="text-slate-400 text-sm mt-0.5">Real-Time Registration Verification, Distribution Analytics & Ticket Audits</p>
       </div>
       
       <div class="flex flex-wrap items-center gap-3">
-        <!-- Mode Switcher Toggle Button -->
-        <button id="viewToggleBtn" class="bg-purple-600 hover:bg-purple-500 font-bold text-sm px-4 py-2 rounded-lg shadow transition cursor-pointer">
+        <!-- Variable Ticket Revenue Cost Allocation Configurations -->
+        <div class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 flex items-center gap-2">
+          <label for="costPerPersonInput" class="text-xs font-bold text-purple-400 whitespace-nowrap uppercase tracking-wider">Cost per head (₹):</label>
+          <input type="number" id="costPerPersonInput" value="1000" min="0" step="50" 
+            class="bg-transparent text-sm font-black text-slate-100 outline-none w-20 text-center focus:ring-1 focus:ring-purple-500 rounded">
+        </div>
+        <button id="viewToggleBtn" class="bg-purple-600 hover:bg-purple-500 font-bold text-xs px-4 py-2.5 rounded-xl shadow transition tracking-wide cursor-pointer">
           📊 Switch to Attendance Lookover
         </button>
-        <input type="text" id="searchInput" placeholder="Search by Name, UTR, or ID..." 
-          class="bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-200 outline-none focus:ring-2 focus:ring-blue-500 w-60 transition">
-        <button id="refreshBtn" class="bg-blue-600 hover:bg-blue-500 font-semibold text-sm px-4 py-2 rounded-lg shadow transition cursor-pointer">
+        <button id="exportCsvBtn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3 py-2.5 rounded-xl transition cursor-pointer shadow">
+          📥 Export CSV Pass Sheet
+        </button>
+        <button id="refreshBtn" class="bg-blue-600 hover:bg-blue-500 font-bold text-xs px-4 py-2.5 rounded-xl shadow transition cursor-pointer">
           🔄 Refresh
         </button>
       </div>
     </div>
 
-    <!-- Filter Tab Button Row Matrix -->
-    <div id="filterRowContainer" class="flex flex-wrap gap-2 bg-slate-800/40 p-2 rounded-xl border border-slate-700/30">
-      <button id="btnFilterAll" class="filter-btn px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer bg-blue-600 text-white">ALL DATA RECORDS</button>
-      <button id="btnFilterPending" class="filter-btn px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer bg-slate-800 text-slate-400 hover:bg-slate-700">PENDING QUEUE</button>
-      <button id="btnFilterApproved" class="filter-btn px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer bg-slate-800 text-slate-400 hover:bg-slate-700">APPROVED / TICKETS</button>
-      <button id="btnFilterRejected" class="filter-btn px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer bg-slate-800 text-slate-400 hover:bg-slate-700">REJECTED ENTRIES</button>
+    <!-- Analytics Dashboard Cards Section Grid Layer -->
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700/50 shadow">
+        <div class="text-[10px] text-slate-400 uppercase font-black tracking-wider">Total Registrations</div>
+        <div id="countTotal" class="text-2xl font-black mt-1 text-slate-100">0</div>
+      </div>
+      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700/50 shadow">
+        <div class="text-[10px] text-amber-400 uppercase font-black tracking-wider">Pending Records</div>
+        <div id="countPending" class="text-2xl font-black mt-1 text-amber-400">0</div>
+      </div>
+      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700/50 shadow">
+        <div class="text-[10px] text-emerald-400 uppercase font-black tracking-wider">Approved Entry Passes</div>
+        <div id="countApproved" class="text-2xl font-black mt-1 text-emerald-400">0</div>
+      </div>
+      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700/50 shadow">
+        <div class="text-[10px] text-rose-400 uppercase font-black tracking-wider">Rejected Entries</div>
+        <div id="countRejected" class="text-2xl font-black mt-1 text-rose-400">0</div>
+      </div>
+      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700/50 shadow">
+        <div class="text-[10px] text-blue-400 uppercase font-black tracking-wider">Checked In Attendance</div>
+        <div id="countCheckedIn" class="text-2xl font-black mt-1 text-blue-400">0</div>
+      </div>
+      <div class="bg-slate-800 p-4 rounded-xl border border-gradient-to-b border-purple-500/30 shadow relative overflow-hidden bg-gradient-to-b from-slate-800 to-purple-950/20">
+        <div class="text-[10px] text-purple-400 uppercase font-black tracking-wider">Revenue Collected</div>
+        <div id="revenueCollected" class="text-2xl font-black mt-1 text-purple-400">₹0</div>
+      </div>
     </div>
 
-    <!-- Counter Analytics Metrics Display Panels -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700/50">
-        <div class="text-xs text-slate-400 uppercase font-bold">Total Enrolled</div>
-        <div id="countTotal" class="text-2xl font-extrabold mt-1 text-slate-100">0</div>
-      </div>
-      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700/50">
-        <div class="text-xs text-slate-400 uppercase font-bold text-amber-400">Pending Review</div>
-        <div id="countPending" class="text-2xl font-extrabold mt-1 text-amber-400">0</div>
-      </div>
-      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700/50">
-        <div class="text-xs text-slate-400 uppercase font-bold text-emerald-400">Approved Tickets</div>
-        <div id="countApproved" class="text-2xl font-extrabold mt-1 text-emerald-400">0</div>
-      </div>
-      <div class="bg-slate-800 p-4 rounded-xl border border-slate-700/50">
-        <div class="text-xs text-slate-400 uppercase font-bold text-blue-400">Checked In</div>
-        <div id="countCheckedIn" class="text-2xl font-extrabold mt-1 text-blue-400">0</div>
+    <!-- Live Segment Matrix Combinatorial Filtering Control Toolbar Panels -->
+    <div class="bg-slate-800 p-4 rounded-xl border border-slate-700/50 shadow-lg space-y-3">
+      <div class="text-xs font-bold text-slate-400 uppercase tracking-widest select-none">Multi-Criteria Evaluation Query System Filters</div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+        
+        <div>
+          <label class="block text-[10px] uppercase font-black text-slate-500 mb-1 tracking-wider">Search Parameter Input</label>
+          <input type="text" id="searchInput" placeholder="Search ID, Name, UTR, Email..." 
+            class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none focus:ring-2 focus:ring-blue-500 transition">
+        </div>
+
+        <div>
+          <label class="block text-[10px] uppercase font-black text-slate-500 mb-1 tracking-wider">Queue Flow Status</label>
+          <select id="filterStatus" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none focus:ring-2 focus:ring-blue-500 transition cursor-pointer">
+            <option value="All">All Status Profiles</option>
+            <option value="Pending">Pending Verification</option>
+            <option value="Approved">Approved Status</option>
+            <option value="Rejected">Rejected Status</option>
+            <option value="Checked-in">Checked-In Passports</option>
+            <option value="Duplicate">Duplicate Flagged Rows</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-[10px] uppercase font-black text-slate-500 mb-1 tracking-wider">Institution / College</label>
+          <select id="filterCollege" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none focus:ring-2 focus:ring-blue-500 transition cursor-pointer">
+            <option value="All">All Institutions</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-[10px] uppercase font-black text-slate-500 mb-1 tracking-wider">Academic Specialization / Branch</label>
+          <select id="filterBranch" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none focus:ring-2 focus:ring-blue-500 transition cursor-pointer">
+            <option value="All">All Specializations</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-[10px] uppercase font-black text-slate-500 mb-1 tracking-wider">Academic Cohort Year</label>
+          <select id="filterYear" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 outline-none focus:ring-2 focus:ring-blue-500 transition cursor-pointer">
+            <option value="All">All Batch Profiles</option>
+            <option value="1">1st Year Students</option>
+            <option value="2">2nd Year Students</option>
+            <option value="3">3rd Year Students</option>
+            <option value="4">4th Year Students</option>
+          </select>
+        </div>
+
       </div>
     </div>
 
-    <!-- Data Display Grid Board Layout Area -->
-    <div class="bg-slate-800 rounded-xl border border-slate-700/50 overflow-hidden shadow-2xl">
-      <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse">
-          <thead id="tableHeaderBlock" class="bg-slate-950/40 text-slate-300 uppercase text-xs font-bold tracking-wider border-b border-slate-700/60">
-            <!-- Dynamic Injection Layout Headers -->
-          </thead>
-          <tbody id="tableBodyBlock" class="divide-y divide-slate-700/40 text-sm text-slate-300">
-            <tr>
-              <td colspan="7" class="text-center py-12 text-slate-500 font-medium animate-pulse">Syncing application runtime elements...</td>
-            </tr>
-          </tbody>
-        </table>
+    <!-- Analytical Demographics Breakdown Section Layer Display Boxes -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      
+      <!-- Side Metrics Distribution Ledger Widgets -->
+      <div class="lg:col-span-1 space-y-4">
+        
+        <!-- College Wise Demographics Card -->
+        <div class="bg-slate-800 border border-slate-700/50 rounded-xl p-4 shadow">
+          <h3 class="text-xs font-black text-slate-400 tracking-wider uppercase border-b border-slate-700 pb-2 mb-2">College Distributions</h3>
+          <div class="space-y-1.5 max-h-36 overflow-y-auto text-xs font-mono" id="distributionCollegeArea">
+            <p class="text-slate-500 italic">No metrics parsed yet...</p>
+          </div>
+        </div>
+
+        <!-- Branch Wise Demographics Card -->
+        <div class="bg-slate-800 border border-slate-700/50 rounded-xl p-4 shadow">
+          <h3 class="text-xs font-black text-slate-400 tracking-wider uppercase border-b border-slate-700 pb-2 mb-2">Branch Distributions</h3>
+          <div class="space-y-1.5 max-h-36 overflow-y-auto text-xs font-mono" id="distributionBranchArea">
+            <p class="text-slate-500 italic">No metrics parsed yet...</p>
+          </div>
+        </div>
+
+        <!-- Cohort Year Distribution Card -->
+        <div class="bg-slate-800 border border-slate-700/50 rounded-xl p-4 shadow">
+          <h3 class="text-xs font-black text-slate-400 tracking-wider uppercase border-b border-slate-700 pb-2 mb-2">Batch Distributions</h3>
+          <div class="space-y-1.5 max-h-36 overflow-y-auto text-xs font-mono" id="distributionYearArea">
+            <p class="text-slate-500 italic">No metrics parsed yet...</p>
+          </div>
+        </div>
+
+        <!-- Registration Daily Logs Trend Ledger -->
+        <div class="bg-slate-800 border border-slate-700/50 rounded-xl p-4 shadow">
+          <h3 class="text-xs font-black text-slate-400 tracking-wider uppercase border-b border-slate-700 pb-2 mb-2">Daily Intake History Trends</h3>
+          <div class="space-y-1.5 max-h-40 overflow-y-auto text-xs font-mono" id="distributionTrendsArea">
+            <p class="text-slate-500 italic">No metrics parsed yet...</p>
+          </div>
+        </div>
+
       </div>
+
+      <!-- Master Data Ledger Datagrid Grid Frame Container Block Area -->
+      <div class="lg:col-span-3 bg-slate-800 rounded-xl border border-slate-700/50 overflow-hidden shadow-2xl flex flex-col justify-between">
+        <div class="overflow-x-auto w-full">
+          <table class="w-full text-left border-collapse">
+            <thead id="tableHeaderBlock" class="bg-slate-950/50 text-slate-300 uppercase text-[10px] font-black tracking-widest border-b border-slate-700/60">
+              <!-- Rendered programmatically by browser compilation actions via state controls -->
+            </thead>
+            <tbody id="tableBodyBlock" class="divide-y divide-slate-700/40 text-xs text-slate-300 font-medium">
+              <tr>
+                <td colspan="8" class="text-center py-20 text-slate-500 font-bold animate-pulse tracking-wide">Syncing local data structures...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   </div>
 
