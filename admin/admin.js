@@ -1,4 +1,3 @@
-// PASTED GOOGLE APPS SCRIPT WEB APP API URL GOES HERE
 const BACKEND_API_URL = "https://script.google.com/macros/s/AKfycby5bz0GI20VxLh_FQOESgzX9V1N54KaPxHuDKlSZT_uu7rswK8QfU0gbxW4k3BSCfqpXQ/exec"; 
 
 let masterRecordsCache = [];
@@ -9,15 +8,13 @@ window.onload = () => {
   document.getElementById('searchInput').addEventListener('input', handleSearch);
 };
 
-async class APIRequest {
-  static async post(payload) {
-    // Avoid CORS pre-flight preblocking blocks by transmitting raw string payloads
-    const response = await fetch(BACKEND_API_URL, {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    });
-    return await response.json();
-  }
+// FIX: Standardized regular function routing pipeline to prevent browser compile breaks
+async function makeApiCall(payload) {
+  const response = await fetch(BACKEND_API_URL, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+  return await response.json();
 }
 
 async function loadTableData() {
@@ -25,7 +22,7 @@ async function loadTableData() {
   tbody.innerHTML = `<tr><td colspan="6" class="text-center py-12 text-slate-500 animate-pulse font-medium">Fetching secure records from cloud database matrix...</td></tr>`;
   
   try {
-    const response = await APIRequest.post({ action: "getRecords" });
+    const response = await makeApiCall({ action: "getRecords" });
     if (response.status === "success") {
       masterRecordsCache = response.records;
       calculateMetrics(masterRecordsCache);
@@ -35,7 +32,7 @@ async function loadTableData() {
     }
   } catch (error) {
     console.error(error);
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-12 text-rose-400 font-medium">Failed to connect to Google API infrastructure. Verify script deployment configurations.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-12 text-rose-400 font-medium">Failed to connect to Google API infrastructure.</td></tr>`;
   }
 }
 
@@ -80,7 +77,7 @@ function renderTable(records) {
           ${user.status === 'Pending' ? `
             <button onclick="executeAction(${user.rowNumber}, 'approve')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded transition shadow cursor-pointer">Approve</button>
             <button onclick="executeAction(${user.rowNumber}, 'reject')" class="bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white text-xs font-bold px-3 py-1.5 rounded transition cursor-pointer">Reject</button>
-          ` : `<span class="text-xs text-slate-500 font-mono select-none">Completed</span>`}
+          ` : `<span class="text-xs text-slate-500 font-mono select-none">Processed</span>`}
         </td>
       </tr>
     `;
@@ -91,9 +88,9 @@ async function executeAction(rowNumber, action) {
   if (!confirm(`Execute operational state modification [${action.toUpperCase()}] on record line #${rowNumber}?`)) return;
   
   try {
-    const result = await APIRequest.post({ action: action, rowNumber: rowNumber });
+    const result = await makeApiCall({ action: action, rowNumber: rowNumber });
     alert(result.message);
-    loadTableData(); // Trigger programmatic pipeline structural interface reload refreshes
+    loadTableData(); 
   } catch (error) {
     alert("Operational Execution Failure Exception structural crash: " + error);
   }
