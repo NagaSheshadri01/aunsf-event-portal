@@ -1,10 +1,9 @@
-const BACKEND_API_URL = "YOUR_GOOGLE_APPS_SCRIPT_URL_HERE"; 
+const BACKEND_API_URL = "https://script.google.com/macros/s/AKfycby5bz0GI20VxLh_FQOESgzX9V1N54KaPxHuDKlSZT_uu7rswK8QfU0gbxW4k3BSCfqpXQ/exec"; 
 
 let masterRecordsCache = [];
-let dashboardViewMode = "registration"; // Configuration states: "registration" or "attendance"
+let dashboardViewMode = "registration"; // Configuration parameters: "registration" or "attendance"
 
 window.onload = () => {
-  // Read local browser storage arrays instantly to remove rendering overhead frames
   const cachedLocalRecordDataString = localStorage.getItem('aunsf_master_system_cache');
   if (cachedLocalRecordDataString) {
     try {
@@ -12,10 +11,10 @@ window.onload = () => {
       calculateSystemMetricsAndDistributions();
       buildDynamicAlphaSortedFilterDropdowns();
       renderTargetedDataGrid();
-    } catch (err) { console.error("Initial buffer read error frame: ", err); }
+    } catch (err) { console.error("Initial buffer read trace error: ", err); }
   }
 
-  // Bind active DOM button interaction event loops listeners
+  // Bind active control listeners
   document.getElementById('refreshBtn').addEventListener('click', synchronizeCloudLedger);
   document.getElementById('viewToggleBtn').addEventListener('click', toggleViewDisplayMatrix);
   document.getElementById('exportCsvBtn').addEventListener('click', processCsvExportTask);
@@ -25,13 +24,13 @@ window.onload = () => {
     renderTargetedDataGrid();
   });
   
-  // Wire dynamic multi-dropdown items to filter rows reactively on adjustment
+  // Wire unified filter controls to immediately re-evaluate table rows dynamically
   ['searchInput', 'filterStatus', 'filterCollege', 'filterBranch', 'filterYear'].forEach(id => {
     document.getElementById(id).addEventListener('change', renderTargetedDataGrid);
     document.getElementById(id).addEventListener('input', renderTargetedDataGrid);
   });
 
-  synchronizeCloudLedger(); // Launch secure sheet updates asynchronously in the background
+  synchronizeCloudLedger(); // Launch cloud sync loops asynchronously on layout bootup
 };
 
 async function synchronizeCloudLedger() {
@@ -53,10 +52,10 @@ async function synchronizeCloudLedger() {
       calculateSystemMetricsAndDistributions();
       renderTargetedDataGrid();
     } else {
-      alert("Database access error: " + parsedResult.message);
+      alert("Spreadsheet database transmission block error: " + parsedResult.message);
     }
   } catch (error) {
-    console.error("Critical API architecture transmission break trace: ", error);
+    console.error("Critical core background connection break trace: ", error);
   } finally {
     btn.innerText = "🔄 Refresh";
     btn.disabled = false;
@@ -83,7 +82,6 @@ function buildDynamicAlphaSortedFilterDropdowns() {
   let trackedUniqueBranchesSet = new Set();
 
   masterRecordsCache.forEach(r => {
-    // REQUIREMENT FIX: Convert dropdown entries to uppercase to handle string differences perfectly
     if (r.college && r.college.trim() !== "") trackedUniqueCollegesSet.add(r.college.trim().toUpperCase());
     if (r.branch && r.branch.trim() !== "") trackedUniqueBranchesSet.add(r.branch.trim().toUpperCase());
   });
@@ -104,7 +102,6 @@ function buildDynamicAlphaSortedFilterDropdowns() {
 function calculateSystemMetricsAndDistributions() {
   const costPerHead = parseFloat(document.getElementById('costPerPersonInput').value) || 0;
 
-  // 1. Assign Basic Counters
   const totalCount = masterRecordsCache.length;
   const pendingCount = masterRecordsCache.filter(r => r.status === 'Pending').length;
   const approvedCount = masterRecordsCache.filter(r => r.status === 'Approved' || r.status === 'Checked-in').length;
@@ -117,11 +114,9 @@ function calculateSystemMetricsAndDistributions() {
   document.getElementById('countRejected').innerText = rejectedCount;
   document.getElementById('countCheckedIn').innerText = checkedInCount;
   
-  // Dynamic Revenue Matrix: Evaluates across approved and checked in records 
   const aggregateRevenueCalculated = approvedCount * costPerHead;
   document.getElementById('revenueCollected').innerText = "₹" + aggregateRevenueCalculated.toLocaleString('en-IN');
 
-  // 2. Clear out allocation layout widget data areas
   const collegeArea = document.getElementById('distributionCollegeArea');
   const branchArea = document.getElementById('distributionBranchArea');
   const yearArea = document.getElementById('distributionYearArea');
@@ -132,14 +127,12 @@ function calculateSystemMetricsAndDistributions() {
 
   masterRecordsCache.forEach(r => {
     if (r.status !== 'Duplicate') {
-      // REQUIREMENT FIX: Forces absolute upper-case transformation across text evaluation rows
       const cleanColKey = (r.college || 'N/A').trim().toUpperCase();
       const cleanBrKey = (r.branch || 'N/A').trim().toUpperCase();
       const cleanYrKey = "YEAR " + (r.year || 'N/A').toString().trim().toUpperCase();
       
       const earnsRevenue = (r.status === 'Approved' || r.status === 'Checked-in');
 
-      // Accumulate mapping statistics values
       colCountMap[cleanColKey] = (colCountMap[cleanColKey] || 0) + 1;
       brCountMap[cleanBrKey] = (brCountMap[cleanBrKey] || 0) + 1;
       yrCountMap[cleanYrKey] = (yrCountMap[cleanYrKey] || 0) + 1;
@@ -159,7 +152,6 @@ function calculateSystemMetricsAndDistributions() {
     }
   });
 
-  // REQUIREMENT FIX: Display dynamic counts combined with current live financial allocations side-by-side
   collegeArea.innerHTML = Object.keys(colCountMap).sort().map(k => `
     <div class="flex items-center justify-between py-1 border-b border-slate-700/30 gap-2">
       <span class="truncate max-w-[120px] font-bold text-slate-300" title="${k}">${k}</span>
@@ -202,6 +194,8 @@ function toggleViewDisplayMatrix() {
 }
 
 function renderTargetedDataGrid() {
+  calculateSystemMetricsAndDistributions();
+
   const headBlock = document.getElementById('tableHeaderBlock');
   const bodyBlock = document.getElementById('tableBodyBlock');
   
@@ -211,13 +205,11 @@ function renderTargetedDataGrid() {
   const branchFilterValue = document.getElementById('filterBranch').value;
   const yearFilterValue = document.getElementById('filterYear').value;
 
-  // Process data grid filtering checks
   let filteredRecordDataset = masterRecordsCache.filter(row => {
     if (statusFilterValue !== "All") {
       if (statusFilterValue === "Approved" && row.status !== "Approved" && row.status !== "Checked-in") return false;
       if (statusFilterValue !== "Approved" && row.status !== statusFilterValue) return false;
     }
-    // REQUIREMENT FIX: Match against uppercase normalized choices to prevent grid drop errors
     if (collegeFilterValue !== "All" && (row.college || '').trim().toUpperCase() !== collegeFilterValue) return false;
     if (branchFilterValue !== "All" && (row.branch || '').trim().toUpperCase() !== branchFilterValue) return false;
     if (yearFilterValue !== "All" && row.year.toString() !== yearFilterValue.toString()) return false;
@@ -231,25 +223,24 @@ function renderTargetedDataGrid() {
     return true;
   });
 
-  // REQUIREMENT FIX: Complete layout revamp utilizing whitespace shields to eradicate text wrapping bugs
   if (dashboardViewMode === "registration") {
     filteredRecordDataset.sort((a, b) => a.rowNumber - b.rowNumber);
 
-    headerBlock.innerHTML = `
+    headBlock.innerHTML = `
       <tr class="whitespace-nowrap">
-        <th class="px-4 py-3.5 w-32">Ticket ID</th>
-        <th class="px-4 py-3.5 w-52">Participant Name / Email</th>
-        <th class="px-4 py-3.5 w-48">College / Branch</th>
+        <th class="px-4 py-3.5">Ticket ID</th>
+        <th class="px-4 py-3.5">Participant Name / Email</th>
+        <th class="px-4 py-3.5">College / Branch</th>
         <th class="px-4 py-3.5 text-center w-12">Year</th>
-        <th class="px-4 py-3.5 w-32">Transaction UTR</th>
-        <th class="px-4 py-3.5 w-28">Receipt</th>
-        <th class="px-4 py-3.5 w-24">Status</th>
-        <th class="px-4 py-3.5 text-right w-36">Actions</th>
+        <th class="px-4 py-3.5">Transaction UTR</th>
+        <th class="px-4 py-3.5">Receipt</th>
+        <th class="px-4 py-3.5">Status</th>
+        <th class="px-4 py-3.5 text-right">Actions</th>
       </tr>
     `;
 
     if (filteredRecordDataset.length === 0) {
-      bodyBlock.innerHTML = `<tr><td colspan="8" class="text-center py-16 text-slate-500 italic font-bold">No matching data grid row entries found in registration context.</td></tr>`;
+      bodyBlock.innerHTML = `<tr><td colspan="8" class="text-center py-16 text-slate-500 italic font-bold">No matching data grid row entries found.</td></tr>`;
       return;
     }
 
@@ -264,17 +255,17 @@ function renderTargetedDataGrid() {
 
       return `
         <tr class="hover:bg-slate-950/20 transition duration-100 border-b border-slate-700/20">
-          <td class="px-4 py-3.5 font-medium">${trID}</td>
-          <td class="px-4 py-3.5"><div class="font-bold text-slate-100 max-w-[190px] truncate" title="${user.fullName}">${user.fullName}</div><div class="text-[10px] text-slate-400 font-mono mt-0.5 max-w-[190px] truncate" title="${user.email}">${user.email}</div></td>
-          <td class="px-4 py-3.5"><div class="uppercase max-w-[180px] truncate font-bold text-slate-300" title="${user.college}">${user.college}</div><div class="uppercase text-[10px] text-slate-400 mt-0.5 max-w-[180px] truncate" title="${user.branch}">${user.branch}</div></td>
-          <td class="px-4 py-3.5 font-black text-center">${user.year}</td>
+          <td class="px-4 py-3.5 font-medium whitespace-nowrap">${trID}</td>
+          <td class="px-4 py-3.5"><div class="font-bold text-slate-100 whitespace-nowrap max-w-[200px] truncate" title="${user.fullName}">${user.fullName}</div><div class="text-[10px] text-slate-400 font-mono mt-0.5 whitespace-nowrap max-w-[200px] truncate" title="${user.email}">${user.email}</div></td>
+          <td class="px-4 py-3.5"><div class="uppercase font-bold text-slate-300 whitespace-nowrap max-w-[200px] truncate" title="${user.college}">${user.college}</div><div class="uppercase text-[10px] text-slate-400 mt-0.5 whitespace-nowrap max-w-[200px] truncate" title="${user.branch}">${user.branch}</div></td>
+          <td class="px-4 py-3.5 font-black text-center whitespace-nowrap">${user.year}</td>
           <td class="px-4 py-3.5 font-mono text-[11px] tracking-wide text-slate-300 whitespace-nowrap">${user.utr}</td>
-          <td class="px-4 py-3.5 whitespace-nowrap">${user.screenshot && user.screenshot !== "null" ? `<a href="${user.screenshot}" target="_blank" class="text-blue-400 hover:text-blue-300 font-bold underline inline-flex items-center gap-0.5">🖼️ View Image</a>` : `<span class="text-slate-600 italic select-none">null</span>`}</td>
+          <td class="px-4 py-3.5 whitespace-nowrap">${user.screenshot && user.screenshot !== "null" ? `<a href="${user.screenshot}" target="_blank" class="text-blue-400 hover:text-blue-300 font-bold underline inline-flex items-center gap-0.5">View Image</a>` : `<span class="text-slate-600 italic select-none">null</span>`}</td>
           <td class="px-4 py-3.5 whitespace-nowrap"><span class="px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider whitespace-nowrap ${badgeStyleClass}">${user.status === 'Checked-in' ? 'Checked In' : user.status}</span></td>
           <td class="px-4 py-3.5 text-right whitespace-nowrap">
             ${user.status === 'Pending' ? `
               <button onclick="dispatchAdminOperationAction(${user.rowNumber}, 'approve')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[10px] uppercase tracking-wider px-2.5 py-1.5 rounded-lg shadow cursor-pointer transition inline-block">Approve</button>
-              <button onclick="dispatchAdminOperationAction(${user.rowNumber}, 'reject')" class="bg-rose-600/10 hover:bg-rose-600 text-rose-400 hover:text-white font-black text-[10px] uppercase tracking-wider px-2.5 py-1.5 rounded-lg cursor-pointer transition inline-block">Reject</button>
+              <button onclick="dispatchAdminOperationAction(${user.rowNumber}, 'reject')" class="bg-rose-600/10 hover:bg-rose-600 text-rose-400 text-xs font-bold px-2.5 py-1.5 rounded-lg cursor-pointer transition inline-block">Reject</button>
             ` : `<span class="text-slate-500 text-[10px] font-mono select-none">Processed</span>`}
           </td>
         </tr>
@@ -282,7 +273,6 @@ function renderTargetedDataGrid() {
     }).join('');
 
   } else {
-    // Attendance lookover row sorting rules
     filteredRecordDataset.sort((a, b) => {
       let aChecked = a.status === "Checked-in" && a.checkInTime !== "null";
       let bChecked = b.status === "Checked-in" && b.checkInTime !== "null";
@@ -292,14 +282,14 @@ function renderTargetedDataGrid() {
       return a.rowNumber - b.rowNumber;
     });
 
-    headerBlock.innerHTML = `
+    headBlock.innerHTML = `
       <tr class="whitespace-nowrap">
-        <th class="px-4 py-3.5 w-36">Ticket ID</th>
-        <th class="px-4 py-3.5 w-56">Participant Details</th>
-        <th class="px-4 py-3.5 w-56">Institution & Department</th>
+        <th class="px-4 py-3.5">Ticket ID</th>
+        <th class="px-4 py-3.5">Participant Details</th>
+        <th class="px-4 py-3.5">Institution & Department</th>
         <th class="px-4 py-3.5 text-center w-12">Year</th>
-        <th class="px-4 py-3.5 w-28">Flow Status</th>
-        <th class="px-4 py-3.5 w-44">Checked-In Arrival Time</th>
+        <th class="px-4 py-3.5">Flow Status</th>
+        <th class="px-4 py-3.5">Checked-In Arrival Time</th>
       </tr>
     `;
 
@@ -316,9 +306,9 @@ function renderTargetedDataGrid() {
       return `
         <tr class="hover:bg-slate-950/20 transition duration-100 border-b border-slate-700/20 ${user.status === 'Checked-in' ? 'bg-blue-950/10' : ''}">
           <td class="px-4 py-3.5 font-mono font-bold text-slate-300 whitespace-nowrap">${user.regId === 'null' || !user.regId ? '<span class="text-slate-600 italic select-none">null</span>' : user.regId}</td>
-          <td class="px-4 py-3.5"><div class="font-bold text-slate-100 max-w-[200px] truncate" title="${user.fullName}">${user.fullName}</div><div class="text-[10px] text-slate-400 font-mono mt-0.5" >${user.phone}</div></td>
-          <td class="px-4 py-3.5"><div class="uppercase font-bold text-slate-300 max-w-[200px] truncate" title="${user.college}">${user.college}</div><div class="uppercase text-[10px] text-slate-400 mt-0.5 max-w-[200px] truncate" title="${user.branch}">${user.branch}</div></td>
-          <td class="px-4 py-3.5 font-black text-center">${user.year}</td>
+          <td class="px-4 py-3.5"><div class="font-bold text-slate-100 whitespace-nowrap max-w-[200px] truncate" title="${user.fullName}">${user.fullName}</div><div class="text-[10px] text-slate-400 font-mono mt-0.5 whitespace-nowrap max-w-[200px] truncate">${user.phone}</div></td>
+          <td class="px-4 py-3.5"><div class="uppercase font-bold text-slate-300 whitespace-nowrap max-w-[200px] truncate" title="${user.college}">${user.college}</div><div class="uppercase text-[10px] text-slate-400 mt-0.5 whitespace-nowrap max-w-[200px] truncate" title="${user.branch}">${user.branch}</div></td>
+          <td class="px-4 py-3.5 font-black text-center whitespace-nowrap">${user.year}</td>
           <td class="px-4 py-3.5 whitespace-nowrap"><span class="px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap ${badgeStyleClass}">${user.status === 'Checked-in' ? 'Checked In' : user.status}</span></td>
           <td class="px-4 py-3.5 font-mono font-black text-slate-100 whitespace-nowrap">${user.checkInTime === 'null' || !user.checkInTime ? '<span class="text-slate-600 font-normal italic select-none">null</span>' : `⏱️ ${user.checkInTime}`}</td>
         </tr>
@@ -340,7 +330,6 @@ async function dispatchAdminOperationAction(rowNumber, actionName) {
   } catch (error) { alert("API execution crash logs: " + error.toString()); }
 }
 
-// REQUIREMENT FIX: Core file object blob de-allocation pipeline blocks cross-origin script errors 
 function processCsvExportTask() {
   if (masterRecordsCache.length === 0) {
     alert("Export task canceled: Memory buffer contains zero rows.");
@@ -374,7 +363,6 @@ function processCsvExportTask() {
   document.body.appendChild(anchorDownloadLink);
   
   anchorDownloadLink.click(); 
-  
   document.body.removeChild(anchorDownloadLink);
   URL.revokeObjectURL(temporaryBlobDownloadUrlPointer); 
 }
