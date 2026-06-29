@@ -10,6 +10,7 @@
 
   <div class="max-w-7xl mx-auto space-y-6">
     
+    <!-- Top Configuration Header -->
     <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between bg-slate-800 p-6 rounded-xl border border-slate-700/50 gap-4">
       <div>
         <h1 class="text-2xl font-bold tracking-tight">AUNSF Admin Management Dashboard</h1>
@@ -17,6 +18,7 @@
       </div>
       
       <div class="flex flex-wrap items-center gap-3">
+        <!-- Mode Switcher Toggle Button -->
         <button id="viewToggleBtn" class="bg-purple-600 hover:bg-purple-500 font-bold text-sm px-4 py-2 rounded-lg shadow transition cursor-pointer">
           📊 Switch to Attendance Lookover
         </button>
@@ -28,40 +30,44 @@
       </div>
     </div>
 
-    <div id="filterButtonGroup" class="flex flex-wrap gap-2 bg-slate-800/40 p-2 rounded-xl border border-slate-700/30">
-      <button data-filter="All" class="filter-btn px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer bg-blue-600 text-white">ALL DATA RECORDS</button>
-      <button data-filter="Pending" class="filter-btn px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer bg-slate-800 text-slate-400 hover:bg-slate-700">PENDING QUEUE</button>
-      <button data-filter="Approved" class="filter-btn px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer bg-slate-800 text-slate-400 hover:bg-slate-700">APPROVED / TICKETS</button>
-      <button data-filter="Rejected" class="filter-btn px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer bg-slate-800 text-slate-400 hover:bg-slate-700">REJECTED ENTRIES</button>
+    <!-- Filter Tab Button Row Matrix -->
+    <div id="filterRowContainer" class="flex flex-wrap gap-2 bg-slate-800/40 p-2 rounded-xl border border-slate-700/30">
+      <button id="btnFilterAll" class="filter-btn px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer bg-blue-600 text-white">ALL DATA RECORDS</button>
+      <button id="btnFilterPending" class="filter-btn px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer bg-slate-800 text-slate-400 hover:bg-slate-700">PENDING QUEUE</button>
+      <button id="btnFilterApproved" class="filter-btn px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer bg-slate-800 text-slate-400 hover:bg-slate-700">APPROVED / TICKETS</button>
+      <button id="btnFilterRejected" class="filter-btn px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer bg-slate-800 text-slate-400 hover:bg-slate-700">REJECTED ENTRIES</button>
     </div>
 
+    <!-- Counter Analytics Metrics Display Panels -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
       <div class="bg-slate-800 p-4 rounded-xl border border-slate-700/50">
         <div class="text-xs text-slate-400 uppercase font-bold">Total Enrolled</div>
-        <div id="countTotal" class="text-2xl font-extrabold mt-1 text-slate-100">-</div>
+        <div id="countTotal" class="text-2xl font-extrabold mt-1 text-slate-100">0</div>
       </div>
       <div class="bg-slate-800 p-4 rounded-xl border border-slate-700/50">
         <div class="text-xs text-slate-400 uppercase font-bold text-amber-400">Pending Review</div>
-        <div id="countPending" class="text-2xl font-extrabold mt-1 text-amber-400">-</div>
+        <div id="countPending" class="text-2xl font-extrabold mt-1 text-amber-400">0</div>
       </div>
       <div class="bg-slate-800 p-4 rounded-xl border border-slate-700/50">
         <div class="text-xs text-slate-400 uppercase font-bold text-emerald-400">Approved Tickets</div>
-        <div id="countApproved" class="text-2xl font-extrabold mt-1 text-emerald-400">-</div>
+        <div id="countApproved" class="text-2xl font-extrabold mt-1 text-emerald-400">0</div>
       </div>
       <div class="bg-slate-800 p-4 rounded-xl border border-slate-700/50">
         <div class="text-xs text-slate-400 uppercase font-bold text-blue-400">Checked In</div>
-        <div id="countCheckedIn" class="text-2xl font-extrabold mt-1 text-blue-400">-</div>
+        <div id="countCheckedIn" class="text-2xl font-extrabold mt-1 text-blue-400">0</div>
       </div>
     </div>
 
+    <!-- Data Display Grid Board Layout Area -->
     <div class="bg-slate-800 rounded-xl border border-slate-700/50 overflow-hidden shadow-2xl">
       <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse" id="dashboardMasterTable">
-          <thead id="tableHeaderElement" class="bg-slate-950/40 text-slate-300 uppercase text-xs font-bold tracking-wider border-b border-slate-700/60">
-            </thead>
-          <tbody id="tableBody" class="divide-y divide-slate-700/40 text-sm text-slate-300">
+        <table class="w-full text-left border-collapse">
+          <thead id="tableHeaderBlock" class="bg-slate-950/40 text-slate-300 uppercase text-xs font-bold tracking-wider border-b border-slate-700/60">
+            <!-- Dynamic Injection Layout Headers -->
+          </thead>
+          <tbody id="tableBodyBlock" class="divide-y divide-slate-700/40 text-sm text-slate-300">
             <tr>
-              <td colspan="7" class="text-center py-12 text-slate-500 animate-pulse font-medium">Initializing client engine sync handlers...</td>
+              <td colspan="7" class="text-center py-12 text-slate-500 font-medium animate-pulse">Syncing application runtime elements...</td>
             </tr>
           </tbody>
         </table>

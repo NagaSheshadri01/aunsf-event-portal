@@ -1,31 +1,33 @@
 const BACKEND_API_URL = "https://script.google.com/macros/s/AKfycby5bz0GI20VxLh_FQOESgzX9V1N54KaPxHuDKlSZT_uu7rswK8QfU0gbxW4k3BSCfqpXQ/exec"; 
 
 let masterRecordsCache = [];
-let activeViewMode = "registration"; // "registration" or "attendance"
-let activeFilterState = "All";       // "All", "Pending", "Approved", "Rejected"
+let activeViewMode = "registration"; // Options: "registration" or "attendance"
+let activeFilterState = "All";       // Options: "All", "Pending", "Approved", "Rejected"
 
 window.onload = () => {
-  // Load local persistent cache data strings for accelerated initial painting cycles
-  const savedCache = localStorage.getItem('aunsf_dashboard_cache');
-  if (savedCache) {
+  // Read local cache parameters immediately to ensure 0ms load speed profiles
+  const storedLocalCacheData = localStorage.getItem('aunsf_dashboard_cache');
+  if (storedLocalCacheData) {
     try {
-      masterRecordsCache = JSON.parse(savedCache);
+      masterRecordsCache = JSON.parse(storedLocalCacheData);
       calculateMetrics(masterRecordsCache);
-      refreshViewDisplay();
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("Cache trace log read failure: ", e); }
   }
 
-  loadTableData();
-
-  // Bind interface element execution listeners
+  // Bind actionable logic tracking controls safely
   document.getElementById('refreshBtn').addEventListener('click', loadTableData);
-  document.getElementById('viewToggleBtn').addEventListener('click', toggleViewModeContext);
-  document.getElementById('searchInput').addEventListener('input', handleLiveSearchFilter);
+  document.getElementById('viewToggleBtn').addEventListener('click', handleViewModeToggle);
+  document.getElementById('searchInput').addEventListener('input', renderDashboardViewLayout);
   
-  setupFilterButtonHandlers();
+  setupFilterTabActions();
+  loadTableData(); // Trigger background sync execution loops
 };
 
 async function loadTableData() {
+  const refreshBtn = document.getElementById('refreshBtn');
+  refreshBtn.innerText = "🔄 Syncing...";
+  refreshBtn.disabled = true;
+
   try {
     const response = await fetch(BACKEND_API_URL, {
       method: 'POST',
@@ -37,10 +39,13 @@ async function loadTableData() {
       masterRecordsCache = data.records;
       localStorage.setItem('aunsf_dashboard_cache', JSON.stringify(masterRecordsCache));
       calculateMetrics(masterRecordsCache);
-      refreshViewDisplay();
     }
   } catch (error) {
-    console.error("Cloud database communication breakdown: ", error);
+    console.error("Network synchronization block error details: ", error);
+  } finally {
+    refreshBtn.innerText = "🔄 Refresh";
+    refreshBtn.disabled = false;
+    renderDashboardViewLayout();
   }
 }
 
@@ -51,78 +56,102 @@ function calculateMetrics(records) {
   document.getElementById('countCheckedIn').innerText = records.filter(r => r.status === 'Checked-in').length;
 }
 
-function toggleViewModeContext() {
-  const btn = document.getElementById('viewToggleBtn');
-  const filterRow = document.getElementById('filterButtonGroup');
-  
-  if (activeViewMode === "registration") {
-    activeViewMode = "attendance";
-    btn.innerText = "📋 Switch to Registration View";
-    filterRow.classList.add('hidden'); // Hide state selectors in global gate lookup view
-  } else {
-    activeViewMode = "registration";
-    btn.innerText = "📊 Switch to Attendance Lookover";
-    filterRow.classList.remove('hidden');
-  }
-  refreshViewDisplay();
-}
+function setupFilterTabActions() {
+  const filterMappings = {
+    'btnFilterAll': 'All',
+    'btnFilterPending': 'Pending',
+    'btnFilterApproved': 'Approved',
+    'btnFilterRejected': 'Rejected'
+  };
 
-function setupFilterButtonHandlers() {
-  const buttons = document.querySelectorAll('.filter-btn');
-  buttons.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      buttons.forEach(b => b.className = "filter-btn px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer bg-slate-800 text-slate-400 hover:bg-slate-700");
+  Object.keys(filterMappings).forEach(btnId => {
+    const btnElement = document.getElementById(btnId);
+    if (!btnElement) return;
+    
+    btnElement.addEventListener('click', (e) => {
+      // Restore passive layouts across all filters
+      Object.keys(filterMappings).forEach(id => {
+        document.getElementById(id).className = "filter-btn px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer bg-slate-800 text-slate-400 hover:bg-slate-700";
+      });
+      // Highlight active filter tab choice
       e.target.className = "filter-btn px-4 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer bg-blue-600 text-white";
-      activeFilterState = e.target.getAttribute('data-filter');
-      refreshViewDisplay();
+      
+      activeFilterState = filterMappings[btnId];
+      renderDashboardViewLayout();
     });
   });
 }
 
-function refreshViewDisplay() {
-  renderTableHeader();
-  let datasetToDisplay = [...masterRecordsCache];
+function handleViewModeToggle() {
+  const toggleBtn = document.getElementById('viewToggleBtn');
+  const filterContainer = document.getElementById('filterRowContainer');
 
   if (activeViewMode === "registration") {
-    // Apply state filter choices
-    if (activeFilterState !== "All") {
-      datasetToDisplay = datasetToDisplay.filter(r => r.status === activeFilterState || (activeFilterState === "Approved" && r.status === "Checked-in"));
-    }
+    activeViewMode = "attendance";
+    toggleBtn.innerText = "📋 Switch to Registration View";
+    filterContainer.classList.add('hidden'); // Clear tab bar in gate overview mode
   } else {
-    // Attendance View Sorting Logic: Place checked-in records on top sorted by time
-    datasetToDisplay.sort((a, b) => {
-      let aChecked = a.status === "Checked-in" || a.checkInTime !== "null";
-      let bChecked = b.status === "Checked-in" || b.checkInTime !== "null";
-      
+    activeViewMode = "registration";
+    toggleBtn.innerText = "📊 Switch to Attendance Lookover";
+    filterContainer.classList.remove('hidden');
+  }
+  renderDashboardViewLayout();
+}
+
+function renderDashboardViewLayout() {
+  const headBlock = document.getElementById('tableHeaderBlock');
+  const bodyBlock = document.getElementById('tableBodyBlock');
+  const searchQuery = document.getElementById('searchInput').value.toLowerCase().trim();
+
+  // 1. Process Filtering Rules Data Array Constraints
+  let recordsDataset = [...masterRecordsCache];
+
+  if (activeViewMode === "registration") {
+    if (activeFilterState !== "All") {
+      recordsDataset = recordsDataset.filter(r => {
+        if (activeFilterState === "Approved") return r.status === "Approved" || r.status === "Checked-in";
+        return r.status === activeFilterState;
+      });
+    }
+    // Maintain raw sheet array progression index sequence matching spreadsheet rows
+    recordsDataset.sort((a, b) => a.rowNumber - b.rowNumber);
+  } else {
+    // Attendance View Sorting Logic: Place arrival validation profiles on top sorted by time
+    recordsDataset.sort((a, b) => {
+      let aChecked = a.status === "Checked-in" && a.checkInTime !== "null";
+      let bChecked = b.status === "Checked-in" && b.checkInTime !== "null";
       if (aChecked && !bChecked) return -1;
       if (!aChecked && bChecked) return 1;
-      if (aChecked && bChecked) {
-        return new Date(b.checkInTime) - new Date(a.checkInTime); // Newest check-ins at the very top
-      }
-      return a.rowNumber - b.rowNumber; // Keep sequential ordering for un-checked guests
+      if (aChecked && bChecked) return new Date(b.checkInTime) - new Date(a.checkInTime);
+      return a.rowNumber - b.rowNumber;
     });
   }
 
-  renderTableRows(datasetToDisplay);
-  handleLiveSearchFilter(); // Re-apply existing search filters if inputs have values
-}
+  // 2. Process Search Queries
+  if (searchQuery) {
+    recordsDataset = recordsDataset.filter(r => 
+      r.fullName.toLowerCase().includes(searchQuery) || 
+      r.utr.toLowerCase().includes(searchQuery) || 
+      (r.regId && r.regId.toLowerCase().includes(searchQuery)) ||
+      r.college.toLowerCase().includes(searchQuery)
+    );
+  }
 
-function renderTableHeader() {
-  const header = document.getElementById('tableHeaderElement');
+  // 3. Render Header Columns Dynamically
   if (activeViewMode === "registration") {
-    header.innerHTML = `
+    headBlock.innerHTML = `
       <tr>
         <th class="px-6 py-4">Ticket ID</th>
         <th class="px-6 py-4">Participant Details</th>
         <th class="px-6 py-4">Branch & Year</th>
         <th class="px-6 py-4">UTR Reference</th>
         <th class="px-6 py-4">Receipt</th>
-        <th class="px-6 py-4">Ticket Status</th>
+        <th class="px-6 py-4">Status</th>
         <th class="px-6 py-4 text-right">Actions</th>
       </tr>
     `;
   } else {
-    header.innerHTML = `
+    headBlock.innerHTML = `
       <tr>
         <th class="px-6 py-4">Ticket ID</th>
         <th class="px-6 py-4">Participant Details</th>
@@ -132,68 +161,65 @@ function renderTableHeader() {
       </tr>
     `;
   }
-}
 
-function renderTableRows(records) {
-  const tbody = document.getElementById('tableBody');
-  if (records.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-12 text-slate-500 font-medium">No system records available matching criteria.</td></tr>`;
+  // 4. Render Table Grid Rows Content Elements Data Blocks
+  if (recordsDataset.length === 0) {
+    bodyBlock.innerHTML = `<tr><td colspan="7" class="text-center py-12 text-slate-500 font-medium">No matching ledger records identified.</td></tr>`;
     return;
   }
 
-  tbody.innerHTML = records.map(user => {
-    // FIX ID DISPLAY FORMAT RULES
-    let displayId = `<span class="font-bold text-slate-200 font-mono">${user.regId}</span>`;
-    if (!user.regId || user.regId === "" || user.regId === "null") {
-      displayId = `<span class="text-slate-600 italic select-none">null</span>`;
+  bodyBlock.innerHTML = recordsDataset.map(user => {
+    // Format identification codes rules matching instructions setup criteria
+    let formattedRegId = `<span class="font-bold text-slate-200 font-mono select-all">${user.regId}</span>`;
+    if (!user.regId || user.regId === "null" || user.regId === "") {
+      formattedRegId = `<span class="text-slate-600 italic select-none">null</span>`;
     }
 
-    // Status mapping components
-    let statusBadge = `<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">Pending</span>`;
-    if (user.status === 'Approved') statusBadge = `<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Approved</span>`;
-    if (user.status === 'Rejected') statusBadge = `<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">Rejected</span>`;
-    if (user.status === 'Checked-in') statusBadge = `<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">Checked In</span>`;
+    // Status components layout badges mapping choices
+    let badgeMarkup = `<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">Pending</span>`;
+    if (user.status === 'Approved') badgeMarkup = `<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Approved</span>`;
+    if (user.status === 'Rejected') badgeMarkup = `<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">Rejected</span>`;
+    if (user.status === 'Checked-in') badgeMarkup = `<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">Checked In</span>`;
 
-    // Time-based check logic constraints
-    let displayTime = `<span class="text-slate-600 italic">null</span>`;
+    // Time-stamp validation checks rules string output format structures
+    let checkInTimeDisplay = `<span class="text-slate-600 italic select-none">null</span>`;
     if (user.checkInTime && user.checkInTime !== "null" && user.checkInTime !== "") {
-      displayTime = `<span class="text-blue-400 font-mono font-bold">${user.checkInTime}</span>`;
+      checkInTimeDisplay = `<span class="text-blue-400 font-mono font-bold">${user.checkInTime}</span>`;
     }
 
     if (activeViewMode === "registration") {
       return `
         <tr class="hover:bg-slate-950/20 transition border-b border-slate-700/30">
-          <td class="px-6 py-4">${displayId}</td>
+          <td class="px-6 py-4">${formattedRegId}</td>
           <td class="px-6 py-4"><div class="font-bold text-slate-100">${user.fullName}</div><div class="text-xs text-slate-400 mt-0.5">${user.college}</div></td>
           <td class="px-6 py-4"><div>${user.branch}</div><div class="text-xs text-slate-400 mt-0.5">Year ${user.year}</div></td>
-          <td class="px-6 py-4 font-mono text-xs text-slate-300">${user.utr}</td>
-          <td class="px-6 py-4"><a href="${user.screenshot}" target="_blank" class="text-blue-400 underline text-xs">View Link</a></td>
-          <td class="px-6 py-4">${statusBadge}</td>
+          <td class="px-6 py-4 font-mono text-xs text-slate-300 tracking-wide">${user.utr}</td>
+          <td class="px-6 py-4"><a href="${user.screenshot}" target="_blank" class="text-blue-400 underline text-xs font-semibold">View Image</a></td>
+          <td class="px-6 py-4">${badgeMarkup}</td>
           <td class="px-6 py-4 text-right whitespace-nowrap">
             ${user.status === 'Pending' ? `
-              <button onclick="executeAction(${user.rowNumber}, 'approve')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded cursor-pointer transition">Verify & Approve</button>
-              <button onclick="executeAction(${user.rowNumber}, 'reject')" class="bg-rose-600/20 hover:bg-rose-600 text-rose-400 text-xs font-bold px-3 py-1.5 rounded cursor-pointer transition">Reject</button>
-            ` : `<span class="text-xs text-slate-500 font-mono">Processed</span>`}
+              <button onclick="commitAdminAction(${user.rowNumber}, 'approve')" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded cursor-pointer transition shadow">Approve</button>
+              <button onclick="commitAdminAction(${user.rowNumber}, 'reject')" class="bg-rose-600/20 hover:bg-rose-600 text-rose-400 text-xs font-bold px-3 py-1.5 rounded cursor-pointer transition">Reject</button>
+            ` : `<span class="text-xs text-slate-500 font-mono select-none">Processed</span>`}
           </td>
         </tr>
       `;
     } else {
-      // Return Lookover Attendance Format View Row Structure
       return `
         <tr class="hover:bg-slate-950/20 transition border-b border-slate-700/30 ${user.status === 'Checked-in' ? 'bg-blue-950/10' : ''}">
-          <td class="px-6 py-4">${displayId}</td>
+          <td class="px-6 py-4">${formattedRegId}</td>
           <td class="px-6 py-4"><div class="font-bold text-slate-100">${user.fullName}</div><div class="text-xs text-slate-400 mt-0.5">${user.college}</div></td>
           <td class="px-6 py-4"><div>${user.branch}</div><div class="text-xs text-slate-400 mt-0.5">Year ${user.year}</div></td>
-          <td class="px-6 py-4">${statusBadge}</td>
-          <td class="px-6 py-4">${displayTime}</td>
+          <td class="px-6 py-4">${badgeMarkup}</td>
+          <td class="px-6 py-4">${checkInTimeDisplay}</td>
         </tr>
       `;
     }
   }).join('');
 }
 
-async function executeAction(rowNumber, action) {
-  if (!confirm(`Execute state modification [${action.toUpperCase()}] on entry row line #${rowNumber}?`)) return;
+async function commitAdminAction(rowNumber, action) {
+  if (!confirm(`Execute operational state modification [${action.toUpperCase()}] on record line #${rowNumber}?`)) return;
   try {
     const response = await fetch(BACKEND_API_URL, {
       method: 'POST',
@@ -202,22 +228,5 @@ async function executeAction(rowNumber, action) {
     const result = await response.json();
     alert(result.message);
     loadTableData(); 
-  } catch (error) { alert("Action break: " + error); }
-}
-
-// FIX: Bulletproof string search loop matching layout elements precisely
-function handleLiveSearchFilter() {
-  const query = document.getElementById('searchInput').value.toLowerCase().trim();
-  const rows = document.getElementById('tableBody').querySelectorAll('tr');
-
-  rows.forEach(row => {
-    if (row.cells.length < 3) return; // Skip error/empty placeholders rows
-    
-    const rowText = row.innerText.toLowerCase();
-    if (rowText.includes(query)) {
-      row.classList.remove('hidden');
-    } else {
-      row.classList.add('hidden');
-    }
-  });
+  } catch (error) { alert("Operational break detail summary logs: " + error); }
 }
