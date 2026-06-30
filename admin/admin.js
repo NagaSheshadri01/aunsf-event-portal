@@ -256,8 +256,6 @@ function renderTargetedDataGrid() {
     return true;
   });
 
-  filteredRecordDataset.sort((a, b) => a.rowNumber - b.rowNumber);
-
   if (dashboardViewMode === "revenue") {
     headBlock.innerHTML = `
       <tr class="whitespace-nowrap text-left bg-slate-900/40">
@@ -287,18 +285,18 @@ function renderTargetedDataGrid() {
       </tr>`).join('');
 
   } else if (dashboardViewMode === "registration") {
-    // REPOSITIONED COLUMN HEADERS: Ordered exactly to place registration stats to the left of Status block
+    // REPOSITIONED COLUMN HEADERS: Placed on immediate left of status block with explicit text styling
     headBlock.innerHTML = `
-      <tr class="whitespace-nowrap text-left bg-slate-900/40">
+      <tr class="whitespace-nowrap text-left bg-slate-900/40 select-none">
         <th class="px-4 py-3.5">Ticket ID</th>
         <th class="px-4 py-3.5">Participant Details</th>
         <th class="px-4 py-3.5">College / Branch</th>
         <th class="px-4 py-3.5 text-center">Year</th>
         <th class="px-4 py-3.5">Transaction UTR</th>
         <th class="px-4 py-3.5 text-center">Receipt</th>
-        <th class="px-4 py-3.5 text-center bg-slate-900/20">Date of Reg</th>
-        <th class="px-4 py-3.5 text-center bg-slate-900/20">Early Bird</th>
-        <th class="px-4 py-3.5 text-center bg-slate-900/20">Payment Recieved</th>
+        <th class="px-4 py-3.5 text-center bg-slate-900/20 text-blue-400 font-black">Date of Reg</th>
+        <th class="px-4 py-3.5 text-center bg-slate-900/20 text-blue-400 font-black">Early Bird</th>
+        <th class="px-4 py-3.5 text-center bg-slate-900/20 text-blue-400 font-black">Payment Recieved</th>
         <th class="px-4 py-3.5 text-center">Status</th>
         <th class="px-4 py-3.5 text-right pr-6">Actions</th>
       </tr>`;
@@ -309,38 +307,38 @@ function renderTargetedDataGrid() {
     }
 
     bodyBlock.innerHTML = filteredRecordDataset.map(user => {
-      let trID = user.regId === "null" || !user.regId ? `<span class="text-slate-600 italic select-none">null</span>` : `<span class="font-mono font-bold text-slate-200 select-all whitespace-nowrap">${user.regId}</span>`;
-      let badgeStyleClass = user.status === "Approved" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : (user.status === "Rejected" ? "bg-rose-500/10 text-rose-400 border border-rose-500/20" : (user.status === "Checked-in" ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" : "bg-amber-500/10 text-amber-400 border border-amber-500/20"));
+      var trID = (!user.regId || user.regId === "null" || user.regId === "") ? `<span class="text-slate-600 italic select-none">null</span>` : `<span class="font-mono font-bold text-slate-200 select-all whitespace-nowrap">${user.regId}</span>`;
+      var badgeStyleClass = user.status === "Approved" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : (user.status === "Rejected" ? "bg-rose-500/10 text-rose-400 border border-rose-500/20" : (user.status === "Checked-in" ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" : "bg-amber-500/10 text-amber-400 border border-amber-500/20"));
       if (user.status === "Duplicate") badgeStyleClass = "bg-purple-500/10 text-purple-400 border border-purple-500/20";
 
-      let birdValue = user.earlyBird || "null";
-      let birdBtnHtml = "";
+      // Fixed Button layout execution bindings
+      var birdValue = user.earlyBird ? user.earlyBird.toString().trim().toUpperCase() : "NULL";
+      var birdBtnHtml = "";
       if (birdValue === "YES") {
-        birdBtnHtml = `<button onclick="dispatchEarlyBirdToggleState(${user.rowNumber}, 'NO')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] px-2.5 py-1 rounded transition whitespace-nowrap cursor-pointer">YES</button>`;
+        birdBtnHtml = `<button onclick="dispatchEarlyBirdToggleState(${user.rowNumber}, 'NO')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] px-3 py-1 rounded transition whitespace-nowrap cursor-pointer shadow-sm shadow-emerald-600/10">YES</button>`;
       } else if (birdValue === "NO") {
-        birdBtnHtml = `<button onclick="dispatchEarlyBirdToggleState(${user.rowNumber}, 'YES')" class="bg-slate-700 hover:bg-slate-600 text-slate-300 font-extrabold text-[10px] px-2.5 py-1 rounded transition whitespace-nowrap cursor-pointer">NO</button>`;
+        birdBtnHtml = `<button onclick="dispatchEarlyBirdToggleState(${user.rowNumber}, 'YES')" class="bg-slate-700 hover:bg-slate-600 text-slate-300 font-extrabold text-[10px] px-3 py-1 rounded transition whitespace-nowrap cursor-pointer shadow-sm">NO</button>`;
       } else {
         birdBtnHtml = `
-          <div class="inline-flex gap-1 bg-slate-900/30 p-0.5 rounded border border-slate-700/30">
-            <button onclick="dispatchEarlyBirdToggleState(${user.rowNumber}, 'YES')" class="bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-400 text-[9px] font-black px-1.5 py-0.5 rounded transition cursor-pointer">Y</button>
-            <button onclick="dispatchEarlyBirdToggleState(${user.rowNumber}, 'NO')" class="bg-slate-800 hover:bg-rose-600 hover:text-white text-slate-400 text-[9px] font-black px-1.5 py-0.5 rounded transition cursor-pointer">N</button>
+          <div class="inline-flex gap-1 bg-slate-950/40 p-1 rounded-lg border border-slate-700/40">
+            <button onclick="dispatchEarlyBirdToggleState(${user.rowNumber}, 'YES')" class="bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-400 text-[10px] font-black px-2 py-0.5 rounded transition cursor-pointer">Y</button>
+            <button onclick="dispatchEarlyBirdToggleState(${user.rowNumber}, 'NO')" class="bg-slate-800 hover:bg-rose-600 hover:text-white text-slate-400 text-[10px] font-black px-2 py-0.5 rounded transition cursor-pointer">N</button>
           </div>`;
       }
 
-      let financialColumnRenderText = user.status === "Pending" ? `<span class="text-slate-500 italic font-mono select-none">Unearned</span>` : `<span class="font-mono font-bold text-slate-200 whitespace-nowrap">₹${user.amountReceived}</span>`;
+      var financialColumnRenderText = (user.status === "Pending" || user.status === "Duplicate") ? `<span class="text-slate-500 italic font-mono select-none">Unearned</span>` : `<span class="font-mono font-bold text-slate-200 whitespace-nowrap">₹${user.amountReceived || 0}</span>`;
 
-      // FIXED LAYOUT CELLS: Reordered data row elements so they render left of the status badge
       return `
         <tr class="hover:bg-slate-950/20 transition duration-100 border-b border-slate-700/20 text-xs whitespace-nowrap">
           <td class="px-4 py-3.5">${trID}</td>
           <td class="px-4 py-3.5"><div class="font-bold text-slate-100 max-w-[130px] truncate" title="${user.fullName}">${user.fullName}</div><div class="text-[10px] text-slate-400 font-mono mt-0.5 max-w-[130px] truncate">${user.email}</div></td>
           <td class="px-4 py-3.5"><div class="uppercase font-bold text-slate-300 max-w-[130px] truncate" title="${user.college}">${user.college}</div><div class="uppercase text-[10px] text-slate-400 mt-0.5 max-w-[130px] truncate">${user.branch}</div></td>
           <td class="px-4 py-3.5 font-black text-center">${user.year}</td>
-          <td class="px-4 py-3.5 font-mono text-[11px] tracking-wide text-slate-300">${user.utr}</td>
+          <td class="px-4 py-3.5 font-mono text-[11px] tracking-wide text-slate-300 select-all">${user.utr}</td>
           <td class="px-4 py-3.5 text-center">${user.screenshot && user.screenshot !== "null" ? `<a href="${user.screenshot}" target="_blank" class="text-blue-400 font-bold underline">View Image</a>` : `<span class="text-slate-600 italic select-none">null</span>`}</td>
           
-          <!-- LEFT-ALIGNED METRIC CELLS -->
-          <td class="px-4 py-3.5 text-center font-medium text-slate-300 bg-slate-900/10">${user.dateOfReg}</td>
+          <!-- STABILIZED REORDERED PROFILE METRICS METADATA DATA TIERS -->
+          <td class="px-4 py-3.5 text-center font-bold text-slate-200 bg-slate-900/10">${user.dateOfReg}</td>
           <td class="px-4 py-3.5 text-center bg-slate-900/10">${birdBtnHtml}</td>
           <td class="px-4 py-3.5 text-center bg-slate-900/10">${financialColumnRenderText}</td>
           
