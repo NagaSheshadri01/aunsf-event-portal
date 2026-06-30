@@ -1,4 +1,4 @@
-const BACKEND_API_URL = "YOUR_GOOGLE_APPS_SCRIPT_URL_HERE"; 
+const BACKEND_API_URL = "https://script.google.com/macros/s/AKfycby5bz0GI20VxLh_FQOESgzX9V1N54KaPxHuDKlSZT_uu7rswK8QfU0gbxW4k3BSCfqpXQ/exec"; 
 
 let masterRecordsCache = [];
 let dashboardViewMode = "registration"; 
@@ -35,7 +35,6 @@ window.onload = () => {
   });
 
   synchronizeCloudLedger(false);
-
   setInterval(() => { synchronizeCloudLedger(true); }, 10000);
 };
 
@@ -92,6 +91,7 @@ function handleStructuralViewLayoutAlterators() {
   }
   renderTargetedDataGrid();
 }
+
 function filterByRegistrationDateTimelineScope(targetDateKey) { activeDayFilterScope = targetDateKey; renderTargetedDataGrid(); }
 function clearDayTimelineScopeBypass() { activeDayFilterScope = null; renderTargetedDataGrid(); }
 function clearAllActiveFilters() {
@@ -133,7 +133,6 @@ function calculateSystemMetricsAndDistributions() {
   document.getElementById('countRejected').innerText = rejectedCount;
   document.getElementById('countCheckedIn').innerText = checkedInCount;
   
-  // FIXED REVENUE CALCULATION: Compiles exact sum of actual locked historical row cells values
   let aggregateRevenueCalculated = 0;
   masterRecordsCache.forEach(r => {
     if (r.status === 'Approved' || r.status === 'Checked-in') {
@@ -259,7 +258,6 @@ function renderTargetedDataGrid() {
 
   filteredRecordDataset.sort((a, b) => a.rowNumber - b.rowNumber);
 
-  // FIXED TABLE STRUCTURING: Perfectly aligned column mappings matching requirements
   if (dashboardViewMode === "revenue") {
     headBlock.innerHTML = `
       <tr class="whitespace-nowrap text-left bg-slate-900/40">
@@ -289,6 +287,7 @@ function renderTargetedDataGrid() {
       </tr>`).join('');
 
   } else if (dashboardViewMode === "registration") {
+    // REPOSITIONED COLUMN HEADERS: Ordered exactly to place registration stats to the left of Status block
     headBlock.innerHTML = `
       <tr class="whitespace-nowrap text-left bg-slate-900/40">
         <th class="px-4 py-3.5">Ticket ID</th>
@@ -297,9 +296,9 @@ function renderTargetedDataGrid() {
         <th class="px-4 py-3.5 text-center">Year</th>
         <th class="px-4 py-3.5">Transaction UTR</th>
         <th class="px-4 py-3.5 text-center">Receipt</th>
-        <th class="px-4 py-3.5 text-center">Date of Reg</th>
-        <th class="px-4 py-3.5 text-center">Early Bird</th>
-        <th class="px-4 py-3.5 text-center">Payment</th>
+        <th class="px-4 py-3.5 text-center bg-slate-900/20">Date of Reg</th>
+        <th class="px-4 py-3.5 text-center bg-slate-900/20">Early Bird</th>
+        <th class="px-4 py-3.5 text-center bg-slate-900/20">Payment Recieved</th>
         <th class="px-4 py-3.5 text-center">Status</th>
         <th class="px-4 py-3.5 text-right pr-6">Actions</th>
       </tr>`;
@@ -314,39 +313,42 @@ function renderTargetedDataGrid() {
       let badgeStyleClass = user.status === "Approved" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : (user.status === "Rejected" ? "bg-rose-500/10 text-rose-400 border border-rose-500/20" : (user.status === "Checked-in" ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" : "bg-amber-500/10 text-amber-400 border border-amber-500/20"));
       if (user.status === "Duplicate") badgeStyleClass = "bg-purple-500/10 text-purple-400 border border-purple-500/20";
 
-      // Toggle styles configuration mapping parameters variables
       let birdValue = user.earlyBird || "null";
       let birdBtnHtml = "";
       if (birdValue === "YES") {
-        birdBtnHtml = `<button onclick="dispatchEarlyBirdToggleState(${user.rowNumber}, 'NO')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] uppercase tracking-wider px-2 py-1 rounded cursor-pointer transition">YES</button>`;
+        birdBtnHtml = `<button onclick="dispatchEarlyBirdToggleState(${user.rowNumber}, 'NO')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] px-2.5 py-1 rounded transition whitespace-nowrap cursor-pointer">YES</button>`;
       } else if (birdValue === "NO") {
-        birdBtnHtml = `<button onclick="dispatchEarlyBirdToggleState(${user.rowNumber}, 'YES')" class="bg-slate-700 hover:bg-slate-600 text-slate-300 font-extrabold text-[10px] uppercase tracking-wider px-2 py-1 rounded cursor-pointer transition">NO</button>`;
+        birdBtnHtml = `<button onclick="dispatchEarlyBirdToggleState(${user.rowNumber}, 'YES')" class="bg-slate-700 hover:bg-slate-600 text-slate-300 font-extrabold text-[10px] px-2.5 py-1 rounded transition whitespace-nowrap cursor-pointer">NO</button>`;
       } else {
         birdBtnHtml = `
-          <div class="inline-flex gap-1">
-            <button onclick="dispatchEarlyBirdToggleState(${user.rowNumber}, 'YES')" class="bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-400 text-[9px] font-black p-1 rounded transition cursor-pointer">Y</button>
-            <button onclick="dispatchEarlyBirdToggleState(${user.rowNumber}, 'NO')" class="bg-slate-800 hover:bg-rose-600 hover:text-white text-slate-400 text-[9px] font-black p-1 rounded transition cursor-pointer">N</button>
+          <div class="inline-flex gap-1 bg-slate-900/30 p-0.5 rounded border border-slate-700/30">
+            <button onclick="dispatchEarlyBirdToggleState(${user.rowNumber}, 'YES')" class="bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-400 text-[9px] font-black px-1.5 py-0.5 rounded transition cursor-pointer">Y</button>
+            <button onclick="dispatchEarlyBirdToggleState(${user.rowNumber}, 'NO')" class="bg-slate-800 hover:bg-rose-600 hover:text-white text-slate-400 text-[9px] font-black px-1.5 py-0.5 rounded transition cursor-pointer">N</button>
           </div>`;
       }
 
-      let financialColumnRenderText = user.status === "Pending" ? `<span class="text-slate-500 italic text-xs select-none">Unearned</span>` : `<span class="font-mono font-bold text-slate-200">₹${user.amountReceived}</span>`;
+      let financialColumnRenderText = user.status === "Pending" ? `<span class="text-slate-500 italic font-mono select-none">Unearned</span>` : `<span class="font-mono font-bold text-slate-200 whitespace-nowrap">₹${user.amountReceived}</span>`;
 
+      // FIXED LAYOUT CELLS: Reordered data row elements so they render left of the status badge
       return `
-        <tr class="hover:bg-slate-950/20 transition duration-100 border-b border-slate-700/20 text-xs">
+        <tr class="hover:bg-slate-950/20 transition duration-100 border-b border-slate-700/20 text-xs whitespace-nowrap">
           <td class="px-4 py-3.5">${trID}</td>
-          <td class="px-4 py-3.5"><div class="font-bold text-slate-100 whitespace-nowrap max-w-[130px] truncate" title="${user.fullName}">${user.fullName}</div><div class="text-[10px] text-slate-400 font-mono mt-0.5 whitespace-nowrap max-w-[130px] truncate">${user.email}</div></td>
-          <td class="px-4 py-3.5"><div class="uppercase font-bold text-slate-300 whitespace-nowrap max-w-[130px] truncate" title="${user.college}">${user.college}</div><div class="uppercase text-[10px] text-slate-400 mt-0.5 max-w-[130px] truncate">${user.branch}</div></td>
+          <td class="px-4 py-3.5"><div class="font-bold text-slate-100 max-w-[130px] truncate" title="${user.fullName}">${user.fullName}</div><div class="text-[10px] text-slate-400 font-mono mt-0.5 max-w-[130px] truncate">${user.email}</div></td>
+          <td class="px-4 py-3.5"><div class="uppercase font-bold text-slate-300 max-w-[130px] truncate" title="${user.college}">${user.college}</div><div class="uppercase text-[10px] text-slate-400 mt-0.5 max-w-[130px] truncate">${user.branch}</div></td>
           <td class="px-4 py-3.5 font-black text-center">${user.year}</td>
-          <td class="px-4 py-3.5 font-mono text-[11px] tracking-wide text-slate-300 whitespace-nowrap">${user.utr}</td>
-          <td class="px-4 py-3.5 text-center">${user.screenshot && user.screenshot !== "null" ? `<a href="${user.screenshot}" target="_blank" class="text-blue-400 font-bold underline whitespace-nowrap">View Image</a>` : `<span class="text-slate-600 italic select-none">null</span>`}</td>
-          <td class="px-4 py-3.5 text-center font-medium text-slate-300 whitespace-nowrap">${user.dateOfReg}</td>
-          <td class="px-4 py-3.5 text-center">${birdBtnHtml}</td>
-          <td class="px-4 py-3.5 text-center whitespace-nowrap">${financialColumnRenderText}</td>
-          <td class="px-4 py-3.5 text-center whitespace-nowrap"><span class="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${badgeStyleClass}">${user.status}</span></td>
-          <td class="px-4 py-3.5 text-right pr-6 whitespace-nowrap">
+          <td class="px-4 py-3.5 font-mono text-[11px] tracking-wide text-slate-300">${user.utr}</td>
+          <td class="px-4 py-3.5 text-center">${user.screenshot && user.screenshot !== "null" ? `<a href="${user.screenshot}" target="_blank" class="text-blue-400 font-bold underline">View Image</a>` : `<span class="text-slate-600 italic select-none">null</span>`}</td>
+          
+          <!-- LEFT-ALIGNED METRIC CELLS -->
+          <td class="px-4 py-3.5 text-center font-medium text-slate-300 bg-slate-900/10">${user.dateOfReg}</td>
+          <td class="px-4 py-3.5 text-center bg-slate-900/10">${birdBtnHtml}</td>
+          <td class="px-4 py-3.5 text-center bg-slate-900/10">${financialColumnRenderText}</td>
+          
+          <td class="px-4 py-3.5 text-center"><span class="px-2.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${badgeStyleClass}">${user.status}</span></td>
+          <td class="px-4 py-3.5 text-right pr-6">
             ${user.status === 'Pending' ? `
-              <button onclick="dispatchApprovalActionWithLockedPrice(${user.rowNumber})" class="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[10px] uppercase tracking-wider px-2 py-1.5 rounded-lg shadow cursor-pointer transition">Approve</button>
-              <button onclick="dispatchAdminOperationAction(${user.rowNumber}, 'reject')" class="bg-rose-600/10 hover:bg-rose-600 text-rose-400 text-[10px] font-bold px-2 py-1.5 rounded-lg cursor-pointer transition">Reject</button>
+              <button onclick="dispatchApprovalActionWithLockedPrice(${user.rowNumber})" class="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[10px] uppercase tracking-wider px-2.5 py-1.5 rounded-lg shadow cursor-pointer transition">Approve</button>
+              <button onclick="dispatchAdminOperationAction(${user.rowNumber}, 'reject')" class="bg-rose-600/10 hover:bg-rose-600 text-rose-400 text-[10px] font-bold px-2.5 py-1.5 rounded-lg cursor-pointer transition">Reject</button>
             ` : `<span class="text-slate-500 text-[10px] font-mono select-none">Processed</span>`}
           </td>
         </tr>`;
@@ -365,7 +367,7 @@ function renderTargetedDataGrid() {
       </tr>`;
 
     if (filteredRecordDataset.length === 0) {
-      bodyBlock.innerHTML = `<tr><td colspan="7" class="text-center py-12 text-slate-500 italic font-bold">No valid attendance entries identified.</td></tr>`;
+      bodyBlock.innerHTML = `<tr><td colspan="7" class="text-center py-12 text-slate-500 italic font-bold">No valid entries identified.</td></tr>`;
       return;
     }
 
@@ -375,7 +377,7 @@ function renderTargetedDataGrid() {
         <tr class="hover:bg-slate-950/20 transition duration-100 border-b border-slate-700/20 ${user.status === 'Checked-in' ? 'bg-blue-950/10' : ''}">
           <td class="px-4 py-3.5 font-mono font-bold text-slate-300 whitespace-nowrap">${user.regId}</td>
           <td class="px-4 py-3.5"><div class="font-bold text-slate-100 max-w-[200px] truncate" title="${user.fullName}">${user.fullName}</div><div class="text-[10px] text-slate-400 font-mono mt-0.5 whitespace-nowrap">${user.phone}</div></td>
-          <td class="px-4 py-3.5"><div class="uppercase font-bold text-slate-300 max-w-[200px] truncate" title="${user.college}">${user.college}</div><div class="uppercase text-[10px] text-slate-400 mt-0.5 max-w-[200px] truncate">${user.branch}</div></td>
+          <td class="px-4 py-3.5"><div class="uppercase font-bold text-slate-300 max-w-[200px] truncate" title="${user.college}">${user.college}</div><div class="uppercase text-[10px] text-slate-400 mt-0.5 max-w-[200px] truncate" title="${user.branch}">${user.branch}</div></td>
           <td class="px-4 py-3.5 font-black text-center whitespace-nowrap">${user.year}</td>
           <td class="px-4 py-3.5 text-center font-medium text-slate-400 whitespace-nowrap">${user.dateOfReg}</td>
           <td class="px-4 py-3.5 whitespace-nowrap"><span class="px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap ${badgeStyleClass}">${user.status === 'Checked-in' ? 'Checked In' : 'Unchecked'}</span></td>
@@ -385,7 +387,6 @@ function renderTargetedDataGrid() {
   }
 }
 
-// FIXED PRICING COMPILATION HUB: Pulls layout instant active price tag array parameter block
 async function dispatchApprovalActionWithLockedPrice(rowNumber) {
   const currentCostPerHeadInputRate = parseInt(document.getElementById('costPerPersonInput').value, 10) || 0;
   if (!confirm(`Verify payment and lock row portfolio reference #${rowNumber} at current rate tier of ₹${currentCostPerHeadInputRate}?`)) return;
@@ -401,7 +402,6 @@ async function dispatchApprovalActionWithLockedPrice(rowNumber) {
   } catch (error) { alert("Approval pipeline fault: " + error.toString()); }
 }
 
-// FIXED DYNAMIC DROPDOWN INTERACTION: Communicates toggle states asynchronously to database cells
 async function dispatchEarlyBirdToggleState(rowNumber, targetValueString) {
   try {
     const response = await fetch(BACKEND_API_URL, {
@@ -417,7 +417,7 @@ async function dispatchEarlyBirdToggleState(rowNumber, targetValueString) {
         renderTargetedDataGrid();
       }
     }
-  } catch (error) { console.error("Toggle execution interface link down: ", error); }
+  } catch (error) { console.error("Toggle fault: ", error); }
 }
 
 async function dispatchAdminOperationAction(rowNumber, actionName) {
