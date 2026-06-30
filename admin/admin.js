@@ -3,21 +3,24 @@ const BACKEND_API_URL = "https://script.google.com/macros/s/AKfycby5bz0GI20VxLh_
 let masterRecordsCache = [];
 let dashboardViewMode = "registration"; // Options: "registration", "attendance", "revenue"
 let expandedCollegesMap = {};           // State tracker map for sidebars expands
-let activeDayFilterScope = null;        // Operational interactive day constraint field
+let activeDayFilterScope = null;        // Active interactive timeline constraint parameter
 
 window.onload = () => {
-  const localCacheString = localStorage.getItem('aunsf_master_system_cache');
-  if (localCacheString) {
+  // FIX: Force initial view shell structure setups immediately on load before any network calls run
+  handleStructuralViewLayoutAlterators();
+
+  const cachedLocalRecordDataString = localStorage.getItem('aunsf_master_system_cache');
+  if (cachedLocalRecordDataString) {
     try {
-      masterRecordsCache = JSON.parse(localCacheString);
+      masterRecordsCache = JSON.parse(cachedLocalRecordDataString);
       calculateSystemMetricsAndDistributions();
       buildDynamicAlphaSortedFilterDropdowns();
       renderTargetedDataGrid();
-    } catch (err) { console.error("Disk buffer reading trace fault exception: ", err); }
+    } catch (err) { console.error("Initial buffer read trace error: ", err); }
   }
 
-  // Bind actionable listeners
-  document.getElementById('refreshBtn').addEventListener('click', synchronizeCloudLedger);
+  // Bind active DOM button interaction event loops listeners
+  document.getElementById('refreshBtn').addEventListener('click', () => synchronizeCloudLedger(false));
   document.getElementById('exportCsvBtn').addEventListener('click', processCsvExportTask);
   document.getElementById('clearFiltersBtn').addEventListener('click', clearAllActiveFilters);
   document.getElementById('btnResetScopeBypass').addEventListener('click', clearDayTimelineScopeBypass);
@@ -28,19 +31,29 @@ window.onload = () => {
   
   setupModeButtonsViewRoutingControlEngine();
 
-  // Wire search inputs filters to immediately alter rows dynamically on change
+  // Wire select elements to filter reactively on entry adjustments
   ['searchInput', 'filterStatus', 'filterCollege', 'filterBranch', 'filterYear'].forEach(id => {
     document.getElementById(id).addEventListener('change', renderTargetedDataGrid);
     document.getElementById(id).addEventListener('input', renderTargetedDataGrid);
   });
 
-  synchronizeCloudLedger();
+  // Initial data grid pull loop invocation
+  synchronizeCloudLedger(false);
+
+  // FIX: 10-Second Automated Silent Background Polling Heartbeat for Multi-Admin Support
+  setInterval(() => {
+    synchronizeCloudLedger(true); // Passes true to update database completely silently
+  }, 10000);
 };
 
-async function synchronizeCloudLedger() {
+async function synchronizeCloudLedger(isSilentBackgroundPoll = false) {
   const btn = document.getElementById('refreshBtn');
-  btn.innerText = "🔍 Syncing...";
-  btn.disabled = true;
+  
+  // Visual indicators update only if called by a physical user click path action
+  if (!isSilentBackgroundPoll) {
+    btn.disabled = true;
+    btn.innerText = "🔍 Syncing...";
+  }
 
   try {
     const response = await fetch(BACKEND_API_URL, {
@@ -57,10 +70,12 @@ async function synchronizeCloudLedger() {
       renderTargetedDataGrid();
     }
   } catch (error) {
-    console.error("Transmission sync fail details trace: ", error);
+    console.error("Background data polling exception: ", error);
   } finally {
-    btn.innerText = "🔄 Refresh";
-    btn.disabled = false;
+    if (!isSilentBackgroundPoll) {
+      btn.innerText = "🔄 Refresh";
+      btn.disabled = false;
+    }
   }
 }
 
@@ -84,36 +99,29 @@ function setupModeButtonsViewRoutingControlEngine() {
   });
 }
 
-// FIX: Repositions panels into a clean top-bar block row ONLY during Revenue view
 function handleStructuralViewLayoutAlterators() {
   const sidebar = document.getElementById('sidebarArea');
   const metricsGrid = document.getElementById('metricsCountersGrid');
   const toolbarContainer = document.getElementById('filterToolbarContainer');
 
   if (dashboardViewMode === "revenue") {
-    sidebar.classList.remove('hidden'); // Expose analysis breakdown panels on top
-    metricsGrid.classList.add('hidden'); // Clear numerical cards out of layout view
-    toolbarContainer.classList.add('hidden'); // Clear filters out of layout view
-  } else {
-    // Hide panels completely from Registration Hub and Attendance Lookover
+    sidebar.classList.remove('hidden'); 
+    metricsGrid.classList.add('hidden'); 
+    toolbarContainer.classList.add('hidden'); 
+  } else if (dashboardViewMode === "attendance") {
     sidebar.classList.add('hidden'); 
     metricsGrid.classList.remove('hidden');
     toolbarContainer.classList.remove('hidden');
-    
-    if (dashboardViewMode === "attendance") {
-      toolbarContainer.className = "bg-slate-800 p-4 rounded-xl border border-slate-700/50 shadow-lg space-y-3";
-    }
+  } else {
+    sidebar.classList.add('hidden'); 
+    metricsGrid.classList.remove('hidden');
+    toolbarContainer.classList.remove('hidden');
   }
   renderTargetedDataGrid();
 }
 
 function filterByRegistrationDateTimelineScope(targetDateKey) {
   activeDayFilterScope = targetDateKey;
-  renderTargetedDataGrid();
-}
-
-function deleteDayTimelineScopeBypass() {
-  activeDayFilterScope = null;
   renderTargetedDataGrid();
 }
 
@@ -135,23 +143,29 @@ function clearAllActiveFilters() {
 function buildDynamicAlphaSortedFilterDropdowns() {
   const collegeDropdownElement = document.getElementById('filterCollege');
   const branchDropdownElement = document.getElementById('filterBranch');
-  const previousCollegeSelection = collegeDropdownElement.value;
-  const previousBranchSelection = branchDropdownElement.value;
+  
+  const currentlySelectedCollege = collegeDropdownElement.value;
+  const currentlySelectedBranch = branchDropdownElement.value;
 
-  let uniqueColleges = new Set(), uniqueBranches = new Set();
+  let trackedUniqueCollegesSet = new Set();
+  let trackedUniqueBranchesSet = new Set();
+
   masterRecordsCache.forEach(r => {
-    if (r.college && r.college.trim() !== "") uniqueColleges.add(r.college.trim().toUpperCase());
-    if (r.branch && r.branch.trim() !== "") uniqueBranches.add(r.branch.trim().toUpperCase());
+    if (r.college && r.college.trim() !== "") trackedUniqueCollegesSet.add(r.college.trim().toUpperCase());
+    if (r.branch && r.branch.trim() !== "") trackedUniqueBranchesSet.add(r.branch.trim().toUpperCase());
   });
 
-  const sortedColleges = Array.from(uniqueColleges).sort((a, b) => a.localeCompare(b));
-  const sortedBranches = Array.from(uniqueBranches).sort((a, b) => a.localeCompare(b));
+  const sortedCollegesArray = Array.from(trackedUniqueCollegesSet).sort((a, b) => a.localeCompare(b));
+  const sortedBranchesArray = Array.from(trackedUniqueBranchesSet).sort((a, b) => a.localeCompare(b));
 
-  collegeDropdownElement.innerHTML = '<option value="All">All Institutions</option>' + sortedColleges.map(c => `<option value="${c}">${c}</option>`).join('');
-  brDropdown.innerHTML = '<option value="All">All Specializations</option>' + sortedBranches.map(b => `<option value="${b}">${b}</option>`).join('');
+  collegeDropdownElement.innerHTML = '<option value="All">All Institutions</option>' + 
+    sortedCollegesArray.map(c => `<option value="${c}">${c}</option>`).join('');
+  
+  branchDropdownElement.innerHTML = '<option value="All">All Specializations</option>' + 
+    sortedBranchesArray.map(b => `<option value="${b}">${b}</option>`).join('');
 
-  if (sortedColleges.includes(previousCollegeSelection)) collegeDropdownElement.value = previousCollegeSelection;
-  if (sortedBranches.includes(previousBranchSelection)) brDropdown.value = previousBranchSelection;
+  if (sortedCollegesArray.includes(currentlySelectedCollege)) collegeDropdownElement.value = currentlySelectedCollege;
+  if (sortedBranchesArray.includes(currentlySelectedBranch)) branchDropdownElement.value = currentlySelectedBranch;
 }
 
 function toggleCollegeDrilldownView(collegeKey) {
@@ -174,8 +188,8 @@ function calculateSystemMetricsAndDistributions() {
   document.getElementById('countRejected').innerText = rejectedCount;
   document.getElementById('countCheckedIn').innerText = checkedInCount;
   
-  const totalGrossRevenueCalculatedValue = approvedCount * costPerHead;
-  document.getElementById('revenueCollected').innerText = "₹" + totalGrossRevenueCalculatedValue.toLocaleString('en-IN');
+  const aggregateRevenueCalculated = approvedCount * costPerHead;
+  document.getElementById('revenueCollected').innerText = "₹" + aggregateRevenueCalculated.toLocaleString('en-IN');
 
   const collegeArea = document.getElementById('distributionCollegeArea');
   const branchArea = document.getElementById('distributionBranchArea');
@@ -261,9 +275,11 @@ function calculateSystemMetricsAndDistributions() {
   `).join('') || '<p class="text-slate-500 italic">No historical entries</p>';
 }
 
-function renderTargetedDataGrid() {
-  calculateSystemMetricsAndDistributions();
+function toggleViewDisplayMatrix() {
+  renderTargetedDataGrid();
+}
 
+function renderTargetedDataGrid() {
   const headBlock = document.getElementById('tableHeaderBlock');
   const bodyBlock = document.getElementById('tableBodyBlock');
   const costValue = parseFloat(document.getElementById('costPerPersonInput').value) || 0;
@@ -448,21 +464,36 @@ async function dispatchAdminOperationAction(rowNumber, actionName) {
     });
     const result = await response.json();
     alert(result.message);
-    synchronizeCloudLedger();
+    synchronizeCloudLedger(false);
   } catch (error) { alert("API execution error: " + error.toString()); }
 }
 
+// FIX: Optimistic UI 2-way mutation instantly flips check-in badge local text values before hitting network channels
 async function dispatchManualAttendanceCheckIn(rowNumber, attendeeName) {
   if (!confirm(`Manually verify ticket credentials and log gate attendance entry for ${attendeeName.toUpperCase()}?`)) return;
+  
+  // 1. Mutate local array element state instantly
+  const matchedCacheIndex = masterRecordsCache.findIndex(r => r.rowNumber === parseInt(rowNumber));
+  if (matchedCacheIndex !== -1) {
+    masterRecordsCache[matchedCacheIndex].status = "Checked-in";
+    masterRecordsCache[matchedCacheIndex].checkInTime = new Date().toLocaleTimeString();
+    
+    // 2. Re-render display layers immediately to give instantaneous visual feedback
+    calculateSystemMetricsAndDistributions();
+    renderTargetedDataGrid();
+  }
+
   try {
+    // 3. Dispatch the write to Google Sheets in the background to handle server sync
     const response = await fetch(BACKEND_API_URL, {
       method: 'POST',
       body: JSON.stringify({ action: "checkin", rowNumber: rowNumber })
     });
     const result = await response.json();
-    alert(result.message);
-    synchronizeCloudLedger();
-  } catch (error) { alert("Gate override fault: " + error.toString()); }
+    console.log("Server Synchronization Callback Confirmed:", result.message);
+  } catch (error) { 
+    console.error("Delayed transmission sync fault: " + error.toString()); 
+  }
 }
 
 function processCsvExportTask() {
