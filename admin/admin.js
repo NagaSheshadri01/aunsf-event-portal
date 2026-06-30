@@ -1,20 +1,21 @@
 const BACKEND_API_URL = "https://script.google.com/macros/s/AKfycby5bz0GI20VxLh_FQOESgzX9V1N54KaPxHuDKlSZT_uu7rswK8QfU0gbxW4k3BSCfqpXQ/exec"; 
 
 let masterRecordsCache = [];
-let dashboardViewMode = "registration"; // Configuration parameters: "registration" or "attendance"
+let dashboardViewMode = "registration"; // Options: "registration" or "attendance"
+let expandedCollegesMap = {};           // State map tracking open college list drilldowns
 
 window.onload = () => {
-  const cachedLocalRecordDataString = localStorage.getItem('aunsf_master_system_cache');
-  if (cachedLocalRecordDataString) {
+  const localCacheString = localStorage.getItem('aunsf_master_system_cache');
+  if (localCacheString) {
     try {
-      masterRecordsCache = JSON.parse(cachedLocalRecordDataString);
+      masterRecordsCache = JSON.parse(localCacheString);
       calculateSystemMetricsAndDistributions();
       buildDynamicAlphaSortedFilterDropdowns();
       renderTargetedDataGrid();
-    } catch (err) { console.error("Initial buffer read trace error: ", err); }
+    } catch (err) { console.error("Cache parsing exception block: ", err); }
   }
 
-  // Bind active control listeners
+  // Bind actionable event listeners
   document.getElementById('refreshBtn').addEventListener('click', synchronizeCloudLedger);
   document.getElementById('viewToggleBtn').addEventListener('click', toggleViewDisplayMatrix);
   document.getElementById('exportCsvBtn').addEventListener('click', processCsvExportTask);
@@ -24,18 +25,18 @@ window.onload = () => {
     renderTargetedDataGrid();
   });
   
-  // Wire unified filter controls to immediately re-evaluate table rows dynamically
+  // Wire filters elements to immediately slice row objects reactively
   ['searchInput', 'filterStatus', 'filterCollege', 'filterBranch', 'filterYear'].forEach(id => {
     document.getElementById(id).addEventListener('change', renderTargetedDataGrid);
     document.getElementById(id).addEventListener('input', renderTargetedDataGrid);
   });
 
-  synchronizeCloudLedger(); // Launch cloud sync loops asynchronously on layout bootup
+  synchronizeCloudLedger();
 };
 
 async function synchronizeCloudLedger() {
   const btn = document.getElementById('refreshBtn');
-  btn.innerText = "🔍 Synchronizing...";
+  btn.innerText = "🔍 Syncing...";
   btn.disabled = true;
 
   try {
@@ -51,11 +52,9 @@ async function synchronizeCloudLedger() {
       buildDynamicAlphaSortedFilterDropdowns();
       calculateSystemMetricsAndDistributions();
       renderTargetedDataGrid();
-    } else {
-      alert("Spreadsheet database transmission block error: " + parsedResult.message);
     }
   } catch (error) {
-    console.error("Critical core background connection break trace: ", error);
+    console.error("Critical transmission fault: ", error);
   } finally {
     btn.innerText = "🔄 Refresh";
     btn.disabled = false;
@@ -99,6 +98,12 @@ function buildDynamicAlphaSortedFilterDropdowns() {
   if (sortedBranchesArray.includes(currentlySelectedBranch)) branchDropdownElement.value = currentlySelectedBranch;
 }
 
+// Interactive toggle wrapper for nested drilldowns
+function toggleCollegeDrilldownView(collegeKey) {
+  expandedCollegesMap[collegeKey] = !expandedCollegesMap[collegeKey];
+  calculateSystemMetricsAndDistributions(); // Re-render sidebar component
+}
+
 function calculateSystemMetricsAndDistributions() {
   const costPerHead = parseFloat(document.getElementById('costPerPersonInput').value) || 0;
 
@@ -122,8 +127,12 @@ function calculateSystemMetricsAndDistributions() {
   const yearArea = document.getElementById('distributionYearArea');
   const trendsArea = document.getElementById('distributionTrendsArea');
 
+  // Multi-dimensional metrics data mapping structures
   let colCountMap = {}, brCountMap = {}, yrCountMap = {}, trendCountMap = {};
   let colRevMap = {}, brRevMap = {}, yrRevMap = {};
+  
+  // Tree tracking schema: colTree[college][branch][year] = valid Paying Ticket Counter
+  let collegeNestedTreeStructure = {};
 
   masterRecordsCache.forEach(r => {
     if (r.status !== 'Duplicate') {
@@ -131,16 +140,22 @@ function calculateSystemMetricsAndDistributions() {
       const cleanBrKey = (r.branch || 'N/A').trim().toUpperCase();
       const cleanYrKey = "YEAR " + (r.year || 'N/A').toString().trim().toUpperCase();
       
-      const earnsRevenue = (r.status === 'Approved' || r.status === 'Checked-in');
+      // LOGICAL FIX RECTIFIED: Multipliers and revenue structures only increment for approved revenue tickets
+      const countsAsRevenueTicket = (r.status === 'Approved' || r.status === 'Checked-in');
 
-      colCountMap[cleanColKey] = (colCountMap[cleanColKey] || 0) + 1;
-      brCountMap[cleanBrKey] = (brCountMap[cleanBrKey] || 0) + 1;
-      yrCountMap[cleanYrKey] = (yrCountMap[cleanYrKey] || 0) + 1;
+      if (countsAsRevenueTicket) {
+        colCountMap[cleanColKey] = (colCountMap[cleanColKey] || 0) + 1;
+        brCountMap[cleanBrKey] = (brCountMap[cleanBrKey] || 0) + 1;
+        yrCountMap[cleanYrKey] = (yrCountMap[cleanYrKey] || 0) + 1;
 
-      if (earnsRevenue) {
         colRevMap[cleanColKey] = (colRevMap[cleanColKey] || 0) + costPerHead;
         brRevMap[cleanBrKey] = (brRevMap[cleanBrKey] || 0) + costPerHead;
         yrRevMap[cleanYrKey] = (yrRevMap[cleanYrKey] || 0) + costPerHead;
+
+        // Populate tree tracking schema
+        if (!collegeNestedTreeStructure[cleanColKey]) collegeNestedTreeStructure[cleanColKey] = {};
+        if (!collegeNestedTreeStructure[cleanColKey][cleanBrKey]) collegeNestedTreeStructure[cleanColKey][cleanBrKey] = {};
+        collegeNestedTreeStructure[cleanColKey][cleanBrKey][cleanYrKey] = (collegeNestedTreeStructure[cleanColKey][cleanBrKey][cleanYrKey] || 0) + 1;
       }
 
       let dateKey = "Unknown Date";
@@ -152,26 +167,56 @@ function calculateSystemMetricsAndDistributions() {
     }
   });
 
-  collegeArea.innerHTML = Object.keys(colCountMap).sort().map(k => `
-    <div class="flex items-center justify-between py-1 border-b border-slate-700/30 gap-2">
-      <span class="truncate max-w-[120px] font-bold text-slate-300" title="${k}">${k}</span>
-      <span class="whitespace-nowrap"><span class="text-slate-500">x${colCountMap[k]}</span> <span class="text-blue-400 font-bold">₹${(colRevMap[k] || 0).toLocaleString('en-IN')}</span></span>
-    </div>
-  `).join('') || '<p class="text-slate-500 italic">No college entries</p>';
+  // Render drilldown cards
+  collegeArea.innerHTML = Object.keys(colCountMap).sort().map(colKey => {
+    const isExpanded = !!expandedCollegesMap[colKey];
+    let drilldownRowContentItemsHtml = "";
+
+    if (isExpanded && collegeNestedTreeStructure[colKey]) {
+      drilldownRowContentItemsHtml = `<div class="bg-slate-900/60 p-2 mt-1 rounded-lg border border-slate-700/40 space-y-1 text-[10px] text-slate-400">`;
+      Object.keys(collegeNestedTreeStructure[colKey]).sort().forEach(branchKey => {
+        Object.keys(collegeNestedTreeStructure[colKey][branchKey]).sort().forEach(yearKey => {
+          const itemQuantityCount = collegeNestedTreeStructure[colKey][branchKey][yearKey];
+          const itemRevenueSum = itemQuantityCount * costPerHead;
+          drilldownRowContentItemsHtml += `
+            <div class="flex items-center justify-between border-b border-slate-800/40 py-0.5">
+              <span class="truncate max-w-[100px]" title="${branchKey} (${yearKey})">${branchKey} (${yearKey.replace("YEAR ","Y")})</span>
+              <span>x${itemQuantityCount} <span class="text-purple-400 font-bold">₹${itemRevenueSum.toLocaleString('en-IN')}</span></span>
+            </div>`;
+        });
+      });
+      drilldownRowContentItemsHtml += `</div>`;
+    }
+
+    return `
+      <div class="border-b border-slate-700/30 py-1.5 last:border-none">
+        <div onclick="toggleCollegeDrilldownView('${colKey}')" class="flex items-center justify-between gap-2 cursor-pointer hover:bg-slate-700/30 p-1 rounded transition select-none">
+          <span class="truncate max-w-[110px] font-bold text-slate-300 inline-flex items-center gap-1" title="${colKey}">
+            ${isExpanded ? '▼' : '▶'} ${colKey}
+          </span>
+          <span class="whitespace-nowrap text-right">
+            <span class="text-slate-500 font-bold">x${colCountMap[colKey] || 0}</span> 
+            <span class="text-blue-400 font-bold">₹${(colRevMap[colKey] || 0).toLocaleString('en-IN')}</span>
+          </span>
+        </div>
+        ${drilldownRowContentItemsHtml}
+      </div>
+    `;
+  }).join('') || '<p class="text-slate-500 italic">No approved data</p>';
 
   branchArea.innerHTML = Object.keys(brCountMap).sort().map(k => `
     <div class="flex items-center justify-between py-1 border-b border-slate-700/30 gap-2">
       <span class="truncate max-w-[120px] font-bold text-slate-300" title="${k}">${k}</span>
-      <span class="whitespace-nowrap"><span class="text-slate-500">x${brCountMap[k]}</span> <span class="text-purple-400 font-bold">₹${(brRevMap[k] || 0).toLocaleString('en-IN')}</span></span>
+      <span class="whitespace-nowrap"><span class="text-slate-500 font-bold">x${brCountMap[k]}</span> <span class="text-purple-400 font-bold">₹${(brRevMap[k] || 0).toLocaleString('en-IN')}</span></span>
     </div>
-  `).join('') || '<p class="text-slate-500 italic">No branch entries</p>';
+  `).join('') || '<p class="text-slate-500 italic">No approved data</p>';
 
   yearArea.innerHTML = Object.keys(yrCountMap).sort().map(k => `
     <div class="flex items-center justify-between py-1 border-b border-slate-700/30 gap-2">
       <span class="font-bold text-slate-300">${k}</span>
-      <span class="whitespace-nowrap"><span class="text-slate-500">x${yrCountMap[k]}</span> <span class="text-emerald-400 font-bold">₹${(yrRevMap[k] || 0).toLocaleString('en-IN')}</span></span>
+      <span class="whitespace-nowrap"><span class="text-slate-500 font-bold">x${yrCountMap[k]}</span> <span class="text-emerald-400 font-bold">₹${(yrRevMap[k] || 0).toLocaleString('en-IN')}</span></span>
     </div>
-  `).join('') || '<p class="text-slate-500 italic">No year entries</p>';
+  `).join('') || '<p class="text-slate-500 italic">No approved data</p>';
 
   trendsArea.innerHTML = Object.keys(trendCountMap).map(k => `
     <div class="flex items-center justify-between py-1 border-b border-slate-700/30">
@@ -182,20 +227,28 @@ function calculateSystemMetricsAndDistributions() {
 }
 
 function toggleViewDisplayMatrix() {
-  const btn = document.getElementById('viewToggleBtn');
+  const toggleBtn = document.getElementById('viewToggleBtn');
+  const sidebarElement = document.getElementById('sidebarArea');
+  const tableContainerElement = document.getElementById('tableAreaContainer');
+
   if (dashboardViewMode === "registration") {
     dashboardViewMode = "attendance";
-    btn.innerText = "📋 Switch to Registration View";
+    toggleBtn.innerText = "📋 Switch to Registration View";
+    
+    // ATTENDANCE LOOKOVER UI MODIFICATION CORES: Hide sidebars, expand layout columns across grid boundaries
+    sidebarElement.style.display = "none";
+    tableContainerElement.className = "lg:col-span-4 bg-slate-800 rounded-2xl border border-slate-700/60 overflow-hidden shadow-2xl transition-all duration-300";
   } else {
     dashboardViewMode = "registration";
-    btn.innerText = "📊 Switch to Attendance Lookover";
+    toggleBtn.innerText = "📊 Switch to Attendance Lookover";
+    
+    sidebarElement.style.display = "block";
+    tableContainerElement.className = "lg:col-span-3 bg-slate-800 rounded-2xl border border-slate-700/60 overflow-hidden shadow-2xl transition-all duration-300";
   }
   renderTargetedDataGrid();
 }
 
 function renderTargetedDataGrid() {
-  calculateSystemMetricsAndDistributions();
-
   const headBlock = document.getElementById('tableHeaderBlock');
   const bodyBlock = document.getElementById('tableBodyBlock');
   
@@ -205,19 +258,25 @@ function renderTargetedDataGrid() {
   const branchFilterValue = document.getElementById('filterBranch').value;
   const yearFilterValue = document.getElementById('filterYear').value;
 
+  // Process data grid filtering arrays
   let filteredRecordDataset = masterRecordsCache.filter(row => {
-    if (statusFilterValue !== "All") {
-      if (statusFilterValue === "Approved" && row.status !== "Approved" && row.status !== "Checked-in") return false;
-      if (statusFilterValue !== "Approved" && row.status !== statusFilterValue) return false;
+    // ATTENDANCE LOOKOVER VIEW FILTER RULE: Omit Duplicate or Rejected rows entirely
+    if (dashboardViewMode === "attendance") {
+      if (row.status === "Rejected" || row.status === "Duplicate") return false;
+    } else {
+      // Normal registration filter matching
+      if (statusFilterValue !== "All") {
+        if (statusFilterValue === "Approved" && row.status !== "Approved" && row.status !== "Checked-in") return false;
+        if (statusFilterValue !== "Approved" && row.status !== statusFilterValue) return false;
+      }
     }
+    
     if (collegeFilterValue !== "All" && (row.college || '').trim().toUpperCase() !== collegeFilterValue) return false;
     if (branchFilterValue !== "All" && (row.branch || '').trim().toUpperCase() !== branchFilterValue) return false;
     if (yearFilterValue !== "All" && row.year.toString() !== yearFilterValue.toString()) return false;
     
     if (queryValue) {
-      const rowSearchString = [
-        row.regId, row.fullName, row.email, row.phone, row.college, row.branch, row.utr
-      ].join(" ").toLowerCase();
+      const rowSearchString = [row.regId, row.fullName, row.email, row.phone, row.college, row.branch, row.utr].join(" ").toLowerCase();
       if (!rowSearchString.includes(queryValue)) return false;
     }
     return true;
@@ -240,7 +299,7 @@ function renderTargetedDataGrid() {
     `;
 
     if (filteredRecordDataset.length === 0) {
-      bodyBlock.innerHTML = `<tr><td colspan="8" class="text-center py-16 text-slate-500 italic font-bold">No matching data grid row entries found.</td></tr>`;
+      bodyBlock.innerHTML = `<tr><td colspan="8" class="text-center py-16 text-slate-500 italic font-bold">No matching data grid row entries found in registration view.</td></tr>`;
       return;
     }
 
@@ -256,16 +315,16 @@ function renderTargetedDataGrid() {
       return `
         <tr class="hover:bg-slate-950/20 transition duration-100 border-b border-slate-700/20">
           <td class="px-4 py-3.5 font-medium whitespace-nowrap">${trID}</td>
-          <td class="px-4 py-3.5"><div class="font-bold text-slate-100 whitespace-nowrap max-w-[200px] truncate" title="${user.fullName}">${user.fullName}</div><div class="text-[10px] text-slate-400 font-mono mt-0.5 whitespace-nowrap max-w-[200px] truncate" title="${user.email}">${user.email}</div></td>
-          <td class="px-4 py-3.5"><div class="uppercase font-bold text-slate-300 whitespace-nowrap max-w-[200px] truncate" title="${user.college}">${user.college}</div><div class="uppercase text-[10px] text-slate-400 mt-0.5 whitespace-nowrap max-w-[200px] truncate" title="${user.branch}">${user.branch}</div></td>
+          <td class="px-4 py-3.5"><div class="font-bold text-slate-100 max-w-[200px] truncate" title="${user.fullName}">${user.fullName}</div><div class="text-[10px] text-slate-400 font-mono mt-0.5 max-w-[200px] truncate" title="${user.email}">${user.email}</div></td>
+          <td class="px-4 py-3.5"><div class="uppercase font-bold text-slate-300 max-w-[200px] truncate" title="${user.college}">${user.college}</div><div class="uppercase text-[10px] text-slate-400 mt-0.5 max-w-[200px] truncate" title="${user.branch}">${user.branch}</div></td>
           <td class="px-4 py-3.5 font-black text-center whitespace-nowrap">${user.year}</td>
           <td class="px-4 py-3.5 font-mono text-[11px] tracking-wide text-slate-300 whitespace-nowrap">${user.utr}</td>
-          <td class="px-4 py-3.5 whitespace-nowrap">${user.screenshot && user.screenshot !== "null" ? `<a href="${user.screenshot}" target="_blank" class="text-blue-400 hover:text-blue-300 font-bold underline inline-flex items-center gap-0.5">View Image</a>` : `<span class="text-slate-600 italic select-none">null</span>`}</td>
+          <td class="px-4 py-3.5 whitespace-nowrap">${user.screenshot && user.screenshot !== "null" ? `<a href="${user.screenshot}" target="_blank" class="text-blue-400 font-bold underline">View Image</a>` : `<span class="text-slate-600 italic select-none">null</span>`}</td>
           <td class="px-4 py-3.5 whitespace-nowrap"><span class="px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider whitespace-nowrap ${badgeStyleClass}">${user.status === 'Checked-in' ? 'Checked In' : user.status}</span></td>
           <td class="px-4 py-3.5 text-right whitespace-nowrap">
             ${user.status === 'Pending' ? `
               <button onclick="dispatchAdminOperationAction(${user.rowNumber}, 'approve')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[10px] uppercase tracking-wider px-2.5 py-1.5 rounded-lg shadow cursor-pointer transition inline-block">Approve</button>
-              <button onclick="dispatchAdminOperationAction(${user.rowNumber}, 'reject')" class="bg-rose-600/10 hover:bg-rose-600 text-rose-400 text-xs font-bold px-2.5 py-1.5 rounded-lg cursor-pointer transition inline-block">Reject</button>
+              <button onclick="dispatchAdminOperationAction(${user.rowNumber}, 'reject')" class="bg-rose-600/10 hover:bg-rose-600 text-rose-400 hover:text-white font-black text-[10px] uppercase tracking-wider px-2.5 py-1.5 rounded-lg cursor-pointer transition inline-block">Reject</button>
             ` : `<span class="text-slate-500 text-[10px] font-mono select-none">Processed</span>`}
           </td>
         </tr>
@@ -273,6 +332,7 @@ function renderTargetedDataGrid() {
     }).join('');
 
   } else {
+    // ATTENDANCE LOOKOVER SORT LOGIC: Checked-in items bubble to top, newest arrivals first
     filteredRecordDataset.sort((a, b) => {
       let aChecked = a.status === "Checked-in" && a.checkInTime !== "null";
       let bChecked = b.status === "Checked-in" && b.checkInTime !== "null";
@@ -282,6 +342,7 @@ function renderTargetedDataGrid() {
       return a.rowNumber - b.rowNumber;
     });
 
+    // ATTENDANCE LOOKOVER VIEW COLUMNS MATRIX
     headBlock.innerHTML = `
       <tr class="whitespace-nowrap">
         <th class="px-4 py-3.5">Ticket ID</th>
@@ -290,27 +351,32 @@ function renderTargetedDataGrid() {
         <th class="px-4 py-3.5 text-center w-12">Year</th>
         <th class="px-4 py-3.5">Flow Status</th>
         <th class="px-4 py-3.5">Checked-In Arrival Time</th>
+        <th class="px-4 py-3.5 text-right">Gate Operations</th>
       </tr>
     `;
 
     if (filteredRecordDataset.length === 0) {
-      bodyBlock.innerHTML = `<tr><td colspan="6" class="text-center py-12 text-slate-500 italic font-bold">No entry verification matches found.</td></tr>`;
+      bodyBlock.innerHTML = `<tr><td colspan="7" class="text-center py-12 text-slate-500 italic font-bold">No valid attendance entries identified.</td></tr>`;
       return;
     }
 
     bodyBlock.innerHTML = filteredRecordDataset.map(user => {
-      let badgeStyleClass = "bg-slate-700/20 text-slate-400 border border-slate-700/30";
-      if (user.status === "Checked-in") badgeStyleClass = "bg-blue-500/10 text-blue-400 border border-blue-500/20";
-      if (user.status === "Approved") badgeStyleClass = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+      let badgeStyleClass = user.status === "Checked-in" ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
 
       return `
         <tr class="hover:bg-slate-950/20 transition duration-100 border-b border-slate-700/20 ${user.status === 'Checked-in' ? 'bg-blue-950/10' : ''}">
-          <td class="px-4 py-3.5 font-mono font-bold text-slate-300 whitespace-nowrap">${user.regId === 'null' || !user.regId ? '<span class="text-slate-600 italic select-none">null</span>' : user.regId}</td>
-          <td class="px-4 py-3.5"><div class="font-bold text-slate-100 whitespace-nowrap max-w-[200px] truncate" title="${user.fullName}">${user.fullName}</div><div class="text-[10px] text-slate-400 font-mono mt-0.5 whitespace-nowrap max-w-[200px] truncate">${user.phone}</div></td>
-          <td class="px-4 py-3.5"><div class="uppercase font-bold text-slate-300 whitespace-nowrap max-w-[200px] truncate" title="${user.college}">${user.college}</div><div class="uppercase text-[10px] text-slate-400 mt-0.5 whitespace-nowrap max-w-[200px] truncate" title="${user.branch}">${user.branch}</div></td>
+          <td class="px-4 py-3.5 font-mono font-bold text-slate-300 whitespace-nowrap">${user.regId}</td>
+          <td class="px-4 py-3.5"><div class="font-bold text-slate-100 max-w-[200px] truncate" title="${user.fullName}">${user.fullName}</div><div class="text-[10px] text-slate-400 font-mono mt-0.5 whitespace-nowrap">${user.phone}</div></td>
+          <td class="px-4 py-3.5"><div class="uppercase font-bold text-slate-300 max-w-[200px] truncate" title="${user.college}">${user.college}</div><div class="uppercase text-[10px] text-slate-400 mt-0.5 max-w-[200px] truncate" title="${user.branch}">${user.branch}</div></td>
           <td class="px-4 py-3.5 font-black text-center whitespace-nowrap">${user.year}</td>
-          <td class="px-4 py-3.5 whitespace-nowrap"><span class="px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap ${badgeStyleClass}">${user.status === 'Checked-in' ? 'Checked In' : user.status}</span></td>
-          <td class="px-4 py-3.5 font-mono font-black text-slate-100 whitespace-nowrap">${user.checkInTime === 'null' || !user.checkInTime ? '<span class="text-slate-600 font-normal italic select-none">null</span>' : `⏱️ ${user.checkInTime}`}</td>
+          <td class="px-4 py-3.5 whitespace-nowrap"><span class="px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap ${badgeStyleClass}">${user.status === 'Checked-in' ? 'Checked In' : 'Unchecked'}</span></td>
+          <td class="px-4 py-3.5 font-mono font-black text-slate-100 whitespace-nowrap">${user.checkInTime === 'null' || !user.checkInTime ? '<span class="text-slate-600 font-normal italic select-none">null</span>' : `⏱_ ${user.checkInTime}`}</td>
+          <td class="px-4 py-3.5 text-right whitespace-nowrap">
+            <!-- REQUIREMENT: Clickable manual bypass gate validation trigger button -->
+            ${user.status !== 'Checked-in' ? `
+              <button onclick="dispatchManualAttendanceCheckIn(${user.rowNumber}, '${user.fullName}')" class="bg-blue-600 hover:bg-blue-500 text-white font-black text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-lg shadow cursor-pointer transition inline-block">✅ Mark Attendance</button>
+            ` : `<span class="text-emerald-500 font-bold font-mono text-[10px] uppercase bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded">Admitted</span>`}
+          </td>
         </tr>
       `;
     }).join('');
@@ -318,7 +384,7 @@ function renderTargetedDataGrid() {
 }
 
 async function dispatchAdminOperationAction(rowNumber, actionName) {
-  if (!confirm(`Execute system validation state change [${actionName.toUpperCase()}] on record reference entry #${rowNumber}?`)) return;
+  if (!confirm(`Execute state modification [${actionName.toUpperCase()}] on entry row reference #${rowNumber}?`)) return;
   try {
     const response = await fetch(BACKEND_API_URL, {
       method: 'POST',
@@ -327,30 +393,38 @@ async function dispatchAdminOperationAction(rowNumber, actionName) {
     const result = await response.json();
     alert(result.message);
     synchronizeCloudLedger();
-  } catch (error) { alert("API execution crash logs: " + error.toString()); }
+  } catch (error) { alert("API execution error: " + error.toString()); }
+}
+
+// Bypasses barcode processing loops to confirm check-ins instantly from the sheet
+async function dispatchManualAttendanceCheckIn(rowNumber, attendeeName) {
+  if (!confirm(`Manually verify ticket pass credentials and mark attendance for ${attendeeName.toUpperCase()}?`)) return;
+  try {
+    const response = await fetch(BACKEND_API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: "checkin", rowNumber: rowNumber }) // Pass precise sheet line index number
+    });
+    const result = await response.json();
+    alert(result.message);
+    synchronizeCloudLedger();
+  } catch (error) { alert("Gate override communication exception block: " + error.toString()); }
 }
 
 function processCsvExportTask() {
   if (masterRecordsCache.length === 0) {
-    alert("Export task canceled: Memory buffer contains zero rows.");
+    alert("Export task canceled: Data cache buffer contains zero rows.");
     return;
   }
   
   const csvHeadersRow = ["Timestamp", "Registration ID", "Full Name", "Email Address", "Phone Number", "College", "Branch", "Year", "UPI Transaction ID", "Screenshot Drive Link", "Status", "Check-In Timestamp"];
   
   const sanitizedStringRowsArray = masterRecordsCache.map(r => [
-    `"${(r.timestamp || '').replace(/"/g, '""')}"`,
-    `"${(r.regId || '').replace(/"/g, '""')}"`,
-    `"${(r.fullName || '').replace(/"/g, '""')}"`,
-    `"${(r.email || '').replace(/"/g, '""')}"`,
-    `"${(r.phone || '').replace(/"/g, '""')}"`,
-    `"${(r.college || '').replace(/"/g, '""')}"`,
-    `"${(r.branch || '').replace(/"/g, '""')}"`,
-    `"${(r.year || '').replace(/"/g, '""')}"`,
-    `"${(r.utr || '').replace(/"/g, '""')}"`,
-    `"${(r.screenshot || '').replace(/"/g, '""')}"`,
-    `"${(r.status || '').replace(/"/g, '""')}"`,
-    `"${(r.checkInTime || '').replace(/"/g, '""')}"`
+    `"${(r.timestamp || '').replace(/"/g, '""')}"`, `"${(r.regId || '').replace(/"/g, '""')}"`,
+    `"${(r.fullName || '').replace(/"/g, '""')}"`, `"${(r.email || '').replace(/"/g, '""')}"`,
+    `"${(r.phone || '').replace(/"/g, '""')}"`, `"${(r.college || '').replace(/"/g, '""')}"`,
+    `"${(r.branch || '').replace(/"/g, '""')}"`, `"${(r.year || '').replace(/"/g, '""')}"`,
+    `"${(r.utr || '').replace(/"/g, '""')}"`, `"${(r.screenshot || '').replace(/"/g, '""')}"`,
+    `"${(r.status || '').replace(/"/g, '""')}"`, `"${(r.checkInTime || '').replace(/"/g, '""')}"`
   ].join(","));
 
   const fullCsvStringContent = csvHeadersRow.join(",") + "\n" + sanitizedStringRowsArray.join("\n");
