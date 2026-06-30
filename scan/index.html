@@ -7,31 +7,49 @@
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <script src="https://unpkg.com/html5-qrcode"></script>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center p-4 pt-10">
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center p-4 pt-8">
 
   <div class="max-w-md w-full bg-slate-800 rounded-2xl border border-slate-700 p-6 shadow-2xl text-center space-y-6">
     <div>
       <h1 class="text-xl font-bold tracking-tight">Gate Admission Scanner</h1>
-      <p class="text-slate-400 text-xs mt-1">Authorized Entry Gate Control Module</p>
+      <p class="text-slate-400 text-xs mt-1">Authorized Entry Gate Crew Verification Module</p>
     </div>
 
+    <!-- Scanner Video Camera Area Box Frame -->
     <div class="overflow-hidden rounded-xl bg-slate-950 border border-slate-700 relative aspect-square flex items-center justify-center">
       <div id="reader" class="w-full h-full hidden"></div>
       <div id="scannerPlaceholder" class="text-slate-500 p-4 text-sm font-medium">Camera Lens Offline. Press the button below to scan.</div>
     </div>
 
+    <!-- Verification Control Trigger Button -->
     <button id="scanTriggerBtn" class="w-full bg-blue-600 hover:bg-blue-500 font-bold py-3 px-4 rounded-xl shadow transition tracking-wide cursor-pointer flex items-center justify-center gap-2">
       📷 Start QR Scanner
     </button>
 
-    <div id="resultBox" class="p-4 rounded-xl text-sm font-semibold transition hidden">
-      <p id="resultMessage"></p>
+    <!-- Context Result Box Status Area Frame -->
+    <div id="resultBox" class="p-4 rounded-xl text-sm font-semibold transition hidden text-left space-y-3 border">
+      <div class="flex items-center justify-between border-b border-white/10 pb-1.5">
+        <h3 id="resultTitle" class="font-black tracking-wide text-xs uppercase">Scan Status Output</h3>
+        <span id="pStatusBadge" class="px-2 py-0.5 rounded text-[9px] font-black uppercase"></span>
+      </div>
+      
+      <!-- REQUIREMENT: High-Visibility Vertical Participant Details Layout Display List Deck -->
+      <div id="verticalDetailsContainer" class="space-y-2 hidden text-xs font-mono">
+        <div class="flex flex-col"><span class="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Ticket Pass ID:</span><span id="pRegId" class="text-slate-200 font-bold text-sm"></span></div>
+        <div class="flex flex-col"><span class="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Full Name:</span><span id="pFullName" class="text-slate-100 font-bold"></span></div>
+        <div class="flex flex-col"><span class="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Institution / College:</span><span id="pCollege" class="text-slate-300 font-bold uppercase"></span></div>
+        <div class="flex flex-col"><span class="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Specialization / Department:</span><span id="pBranch" class="text-slate-300 font-bold uppercase"></span></div>
+        <div class="flex flex-col"><span class="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Cohort Year / Class:</span><span id="pYear" class="text-slate-300 font-bold"></span></div>
+        <div class="flex flex-col"><span class="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Check-In Arrival Time:</span><span id="pCheckInTime" class="text-blue-400 font-black"></span></div>
+      </div>
+      <p id="resultMessage" class="text-center font-medium py-1"></p>
     </div>
 
+    <!-- Active Browser Window Session History Log Ledger Area -->
     <div class="bg-slate-950/50 rounded-xl p-4 border border-slate-700/60 text-left space-y-3">
-      <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Session Scan Ledger</h3>
-      <div class="max-h-40 overflow-y-auto text-xs font-mono space-y-2 divide-y divide-slate-800/50" id="logHistoryContainer">
-        <p class="text-slate-600 italic py-2">No tickets scanned in this active session yet.</p>
+      <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider select-none">Session Scan History Logs</h3>
+      <div class="max-h-36 overflow-y-auto text-xs font-mono space-y-2 divide-y divide-slate-800/50" id="logHistoryContainer">
+        <p class="text-slate-600 italic py-2">No tickets scanned in this active session context.</p>
       </div>
     </div>
   </div>
