@@ -6,7 +6,6 @@ let expandedCollegesMap = {};           // State tracker map for sidebars expand
 let activeDayFilterScope = null;        // Active interactive timeline constraint parameter
 
 window.onload = () => {
-  // FIX: Force initial view shell structure setups immediately on load before any network calls run
   handleStructuralViewLayoutAlterators();
 
   const cachedLocalRecordDataString = localStorage.getItem('aunsf_master_system_cache');
@@ -16,10 +15,9 @@ window.onload = () => {
       calculateSystemMetricsAndDistributions();
       buildDynamicAlphaSortedFilterDropdowns();
       renderTargetedDataGrid();
-    } catch (err) { console.error("Initial buffer read trace error: ", err); }
+    } catch (err) { console.error("Cache parsing exception block: ", err); }
   }
 
-  // Bind active DOM button interaction event loops listeners
   document.getElementById('refreshBtn').addEventListener('click', () => synchronizeCloudLedger(false));
   document.getElementById('exportCsvBtn').addEventListener('click', processCsvExportTask);
   document.getElementById('clearFiltersBtn').addEventListener('click', clearAllActiveFilters);
@@ -31,25 +29,22 @@ window.onload = () => {
   
   setupModeButtonsViewRoutingControlEngine();
 
-  // Wire select elements to filter reactively on entry adjustments
   ['searchInput', 'filterStatus', 'filterCollege', 'filterBranch', 'filterYear'].forEach(id => {
     document.getElementById(id).addEventListener('change', renderTargetedDataGrid);
     document.getElementById(id).addEventListener('input', renderTargetedDataGrid);
   });
 
-  // Initial data grid pull loop invocation
   synchronizeCloudLedger(false);
 
-  // FIX: 10-Second Automated Silent Background Polling Heartbeat for Multi-Admin Support
+  // 10-Second Automated Silent Background Polling Heartbeat for Multi-Admin Support
   setInterval(() => {
-    synchronizeCloudLedger(true); // Passes true to update database completely silently
+    synchronizeCloudLedger(true); 
   }, 10000);
 };
 
 async function synchronizeCloudLedger(isSilentBackgroundPoll = false) {
   const btn = document.getElementById('refreshBtn');
   
-  // Visual indicators update only if called by a physical user click path action
   if (!isSilentBackgroundPoll) {
     btn.disabled = true;
     btn.innerText = "🔍 Syncing...";
@@ -108,10 +103,6 @@ function handleStructuralViewLayoutAlterators() {
     sidebar.classList.remove('hidden'); 
     metricsGrid.classList.add('hidden'); 
     toolbarContainer.classList.add('hidden'); 
-  } else if (dashboardViewMode === "attendance") {
-    sidebar.classList.add('hidden'); 
-    metricsGrid.classList.remove('hidden');
-    toolbarContainer.classList.remove('hidden');
   } else {
     sidebar.classList.add('hidden'); 
     metricsGrid.classList.remove('hidden');
@@ -275,10 +266,6 @@ function calculateSystemMetricsAndDistributions() {
   `).join('') || '<p class="text-slate-500 italic">No historical entries</p>';
 }
 
-function toggleViewDisplayMatrix() {
-  renderTargetedDataGrid();
-}
-
 function renderTargetedDataGrid() {
   const headBlock = document.getElementById('tableHeaderBlock');
   const bodyBlock = document.getElementById('tableBodyBlock');
@@ -440,7 +427,7 @@ function renderTargetedDataGrid() {
       return `
         <tr class="hover:bg-slate-950/20 transition duration-100 border-b border-slate-700/20 ${user.status === 'Checked-in' ? 'bg-blue-950/10' : ''}">
           <td class="px-4 py-3.5 font-mono font-bold text-slate-300 whitespace-nowrap">${user.regId}</td>
-          <td class="px-4 py-3.5"><div class="font-bold text-slate-100 whitespace-nowrap max-w-[200px] truncate" title="${user.fullName}">${user.fullName}</div><div class="text-[10px] text-slate-400 font-mono mt-0.5 whitespace-nowrap">${user.phone}</div></td>
+          <td class="px-4 py-3.5"><div class="font-bold text-slate-100 max-w-[200px] truncate" title="${user.fullName}">${user.fullName}</div><div class="text-[10px] text-slate-400 font-mono mt-0.5 whitespace-nowrap">${user.phone}</div></td>
           <td class="px-4 py-3.5"><div class="uppercase font-bold text-slate-300 max-w-[200px] truncate" title="${user.college}">${user.college}</div><div class="uppercase text-[10px] text-slate-400 mt-0.5 max-w-[200px] truncate" title="${user.branch}">${user.branch}</div></td>
           <td class="px-4 py-3.5 font-black text-center whitespace-nowrap">${user.year}</td>
           <td class="px-4 py-3.5 whitespace-nowrap"><span class="px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap ${badgeStyleClass}">${user.status === 'Checked-in' ? 'Checked In' : 'Unchecked'}</span></td>
@@ -468,26 +455,21 @@ async function dispatchAdminOperationAction(rowNumber, actionName) {
   } catch (error) { alert("API execution error: " + error.toString()); }
 }
 
-// FIX: Optimistic UI 2-way mutation instantly flips check-in badge local text values before hitting network channels
 async function dispatchManualAttendanceCheckIn(rowNumber, attendeeName) {
   if (!confirm(`Manually verify ticket credentials and log gate attendance entry for ${attendeeName.toUpperCase()}?`)) return;
   
-  // 1. Mutate local array element state instantly
-  const matchedCacheIndex = masterRecordsCache.findIndex(r => r.rowNumber === parseInt(rowNumber));
+  const matchedCacheIndex = masterRecordsCache.findIndex(r => r.rowNumber === parseInt(rowNumber, 10));
   if (matchedCacheIndex !== -1) {
     masterRecordsCache[matchedCacheIndex].status = "Checked-in";
     masterRecordsCache[matchedCacheIndex].checkInTime = new Date().toLocaleTimeString();
-    
-    // 2. Re-render display layers immediately to give instantaneous visual feedback
     calculateSystemMetricsAndDistributions();
     renderTargetedDataGrid();
   }
 
   try {
-    // 3. Dispatch the write to Google Sheets in the background to handle server sync
     const response = await fetch(BACKEND_API_URL, {
       method: 'POST',
-      body: JSON.stringify({ action: "checkin", rowNumber: rowNumber })
+      body: JSON.stringify({ action: "checkin", rowNumber: parseInt(rowNumber, 10) }) 
     });
     const result = await response.json();
     console.log("Server Synchronization Callback Confirmed:", result.message);
