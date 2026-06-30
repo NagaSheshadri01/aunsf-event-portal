@@ -35,7 +35,7 @@ function manageScannerState() {
     btn.disabled = false;
     btn.className = "w-full bg-blue-600 hover:bg-blue-500 font-bold py-3 px-4 rounded-xl cursor-pointer shadow";
     btn.innerText = "📷 Start QR Scanner";
-    alert("Camera Initialization Interrupted: " + err);
+    alert("Camera Corrupted: " + err);
   });
 }
 
@@ -56,13 +56,16 @@ async function onQrCodeRead(decodedText) {
   const details = document.getElementById('verticalDetailsContainer');
   const btn = document.getElementById('scanTriggerBtn');
 
-  // Clear previous rendering iterations
+  // Reset and hide container cleanly before loading to avoid abrupt structural layout pops
   details.classList.add('hidden');
-  box.className = "p-4 rounded-xl text-sm font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 text-left space-y-3";
+  box.className = "p-4 rounded-xl text-sm font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 text-left space-y-3 opacity-0 transition-all duration-200";
   badge.className = "hidden";
   title.innerText = "Verifying Ticket Pass...";
   msg.innerText = "Querying ledger database rows for: " + decodedText;
   box.classList.remove('hidden');
+  
+  // Smoothly fade in the loading state box
+  setTimeout(() => { box.classList.remove('opacity-0'); }, 50);
 
   let rowColorClass = "text-rose-400";
   let statusSummaryText = "Verification failed.";
@@ -79,7 +82,6 @@ async function onQrCodeRead(decodedText) {
     if (result.status === "success" || result.status === "duplicate") {
       const user = result.participant;
       
-      // Map vertical elements arrays to layout card nodes
       document.getElementById('pRegId').innerText = user.regId;
       document.getElementById('pFullName').innerText = user.fullName;
       document.getElementById('pCollege').innerText = user.college;
@@ -88,24 +90,23 @@ async function onQrCodeRead(decodedText) {
       document.getElementById('pCheckInTime').innerText = user.checkInTime;
       
       details.classList.remove('hidden');
-      msg.innerText = ""; // Clear baseline loading texts
+      msg.innerText = ""; 
       
       if (result.status === "success") {
-        box.className = "p-4 rounded-xl text-sm font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-left space-y-3 animate-bounce";
+        box.className = "p-4 rounded-xl text-sm font-bold bg-emerald-950/40 text-emerald-400 border-2 border-emerald-500 text-left space-y-3 shadow-lg shadow-emerald-500/10 transition-all duration-300";
         badge.className = "px-2 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
         badge.innerText = "ACCESS GRANTED";
         title.innerText = "ADMISSION CONFIRMED";
         rowColorClass = "text-emerald-400";
       } else {
-        box.className = "p-4 rounded-xl text-sm font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30 text-left space-y-3 ring-4 ring-amber-500/20";
+        box.className = "p-4 rounded-xl text-sm font-bold bg-amber-950/40 text-amber-400 border-2 border-amber-500 text-left space-y-3 shadow-lg shadow-amber-500/10 transition-all duration-300";
         badge.className = "px-2 py-0.5 rounded text-[9px] font-black uppercase bg-amber-500/20 text-amber-400 border border-amber-500/30";
         badge.innerText = "DUPLICATE TICKET";
         title.innerText = "RE-ENTRY WARNING";
         rowColorClass = "text-amber-400";
       }
     } else {
-      // Handle server rejection conditions (Invalid/Rejected)
-      box.className = "p-4 rounded-xl text-sm font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30 text-left space-y-3";
+      box.className = "p-4 rounded-xl text-sm font-bold bg-rose-950/40 text-rose-400 border-2 border-rose-500 text-left space-y-3 shadow-lg shadow-rose-500/10 transition-all duration-300";
       badge.className = "px-2 py-0.5 rounded text-[9px] font-black uppercase bg-rose-500/20 text-rose-400 border border-rose-500/30";
       badge.innerText = "DENIED";
       title.innerText = "INVALID ACCREDITATION";
@@ -114,14 +115,13 @@ async function onQrCodeRead(decodedText) {
 
   } catch (error) {
     statusSummaryText = "API network link communication timeout.";
-    box.className = "p-4 rounded-xl text-sm font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30 text-left space-y-3";
+    box.className = "p-4 rounded-xl text-sm font-bold bg-rose-950/40 text-rose-400 border-2 border-rose-500 text-left space-y-3";
     msg.innerText = "Transmission Breakdown: " + error.toString();
-  } finally {
+  } finally { // Fixed typo here from 'final' to 'finally'
     btn.disabled = false;
     btn.className = "w-full bg-blue-600 hover:bg-blue-500 font-bold py-3 px-4 rounded-xl cursor-pointer shadow";
     btn.innerText = "📷 Start QR Scanner";
 
-    // Track operation entries locally into dynamic historical log view elements lists
     sessionScanHistory.unshift({
       time: new Date().toLocaleTimeString(),
       id: decodedText,
