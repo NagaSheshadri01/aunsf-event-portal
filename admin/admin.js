@@ -1,9 +1,17 @@
-const BACKEND_API_URL = "https://script.google.com/macros/s/AKfycby5bz0GI20VxLh_FQOESgzX9V1N54KaPxHuDKlSZT_uu7rswK8QfU0gbxW4k3BSCfqpXQ/exec"; 
+const BACKEND_API_URL = "https://script.google.com/macros/s/AKfycbxV5iYwbY8xBoMnki_N8qKosRk2mu9kukqm8Hqg4quYT6OtFLJyYiQi_rnXTEdjzTr9/exec"; 
 
 let masterRecordsCache = [];
 let dashboardViewMode = "registration"; 
 let expandedCollegesMap = {};           
 let activeDayFilterScope = null;        
+
+// Live local state storage for the central configurations deck
+let systemConfigState = {
+  regularPrice: 1000,
+  earlyBirdPrice: 500,
+  accommodationPrice: 300,
+  earlyBirdModeActive: false
+};
 
 window.onload = () => {
   handleStructuralViewLayoutAlterators();
@@ -22,12 +30,8 @@ window.onload = () => {
   document.getElementById('exportCsvBtn').addEventListener('click', processCsvExportTask);
   document.getElementById('clearFiltersBtn').addEventListener('click', clearAllActiveFilters);
   document.getElementById('btnResetScopeBypass').addEventListener('click', clearDayTimelineScopeBypass);
-  
-  document.getElementById('costPerPersonInput').addEventListener('input', renderTargetedDataGrid);
-  if(document.getElementById('earlyBirdPriceInput')) {
-    document.getElementById('earlyBirdPriceInput').addEventListener('input', renderTargetedDataGrid);
-  }
-  
+  document.getElementById('saveConfigBtn').addEventListener('click', dispatchConfigUpdateToServer);
+
   setupModeButtonsViewRoutingControlEngine();
 
   ['searchInput', 'filterStatus', 'filterCollege', 'filterBranch', 'filterYear'].forEach(id => {
@@ -36,7 +40,7 @@ window.onload = () => {
   });
 
   synchronizeCloudLedger(false);
-  setInterval(() => { synchronizeCloudLedger(true); }, 10000);
+  setInterval(() => { synchronizeCloudLedger(true); }, 15000);
 };
 
 async function synchronizeCloudLedger(isSilentBackgroundPoll = false) {
@@ -54,6 +58,12 @@ async function synchronizeCloudLedger(isSilentBackgroundPoll = false) {
     if (parsedResult.status === "success") {
       masterRecordsCache = parsedResult.records;
       localStorage.setItem('aunsf_master_system_cache', JSON.stringify(masterRecordsCache));
+      
+      if (parsedResult.config) {
+        systemConfigState = parsedResult.config;
+        updateConfigFieldsInAdminUI();
+      }
+      
       buildDynamicAlphaSortedFilterDropdowns();
       calculateSystemMetricsAndDistributions();
       renderTargetedDataGrid();
@@ -64,6 +74,44 @@ async function synchronizeCloudLedger(isSilentBackgroundPoll = false) {
       btn.innerText = "🔄 Refresh";
       btn.disabled = false;
     }
+  }
+}
+
+function updateConfigFieldsInAdminUI() {
+  document.getElementById('regularPriceInput').value = systemConfigState.regularPrice;
+  document.getElementById('earlyBirdPriceInput').value = systemConfigState.earlyBirdPrice;
+  document.getElementById('accommodationPriceInput').value = systemConfigState.accommodationPrice;
+  document.getElementById('earlyBirdModeToggle').checked = systemConfigState.earlyBirdModeActive;
+}
+
+async function dispatchConfigUpdateToServer() {
+  const saveBtn = document.getElementById('saveConfigBtn');
+  saveBtn.disabled = true;
+  saveBtn.innerText = "Saving...";
+
+  const payload = {
+    action: "updateConfig",
+    regularPrice: parseInt(document.getElementById('regularPriceInput').value, 10) || 0,
+    earlyBirdPrice: parseInt(document.getElementById('earlyBirdPriceInput').value, 10) || 0,
+    accommodationPrice: parseInt(document.getElementById('accommodationPriceInput').value, 10) || 0,
+    earlyBirdModeActive: document.getElementById('earlyBirdModeToggle').checked
+  };
+
+  try {
+    const response = await fetch(BACKEND_API_URL, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    const result = await response.json();
+    if (result.status === "success") {
+      alert("✨ " + result.message);
+      synchronizeCloudLedger(false);
+    }
+  } catch (error) {
+    alert("Configuration transmission fault: " + error.toString());
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.innerText = "💾 Save Configurations";
   }
 }
 
@@ -260,22 +308,26 @@ function renderTargetedDataGrid() {
         <th class="px-4 py-3.5">Paying Participant</th>
         <th class="px-4 py-3.5">Institution Profile</th>
         <th class="px-4 py-3.5 w-16 text-center">Year</th>
+        <th class="px-4 py-3.5">Domain Selection</th>
+        <th class="px-4 py-3.5 text-center">Accom.</th>
         <th class="px-4 py-3.5">Transaction UTR</th>
         <th class="px-4 py-3.5">Date of Reg</th>
         <th class="px-4 py-3.5 text-right pr-6">Amount Collected</th>
       </tr>`;
 
     if (filteredRecordDataset.length === 0) {
-      bodyBlock.innerHTML = `<tr><td colspan="7" class="text-center py-16 text-slate-500 italic font-bold">No verified financial data entries found.</td></tr>`;
+      bodyBlock.innerHTML = `<tr><td colspan="9" class="text-center py-16 text-slate-500 italic font-bold">No verified financial data entries found.</td></tr>`;
       return;
     }
 
     bodyBlock.innerHTML = filteredRecordDataset.map(user => `
-      <tr class="hover:bg-slate-950/20 transition duration-100 border-b border-slate-700/20">
+      <tr class="hover:bg-slate-950/20 transition duration-100 border-b border-slate-700/20 text-xs whitespace-nowrap">
         <td class="px-4 py-3.5 font-mono font-bold text-slate-200 select-all">${user.regId}</td>
         <td class="px-4 py-3.5"><div class="font-bold text-slate-100">${user.fullName}</div><div class="text-[10px] text-slate-400 font-mono mt-0.5">${user.email}</div></td>
         <td class="px-4 py-3.5 font-bold text-slate-300 uppercase">${user.college} <span class="text-slate-500 font-normal text-xs">[${user.branch}]</span></td>
         <td class="px-4 py-3.5 text-center font-bold">${user.year}</td>
+        <td class="px-4 py-3.5 font-semibold text-slate-300">${user.domainSelection || "N/A"}</td>
+        <td class="px-4 py-3.5 text-center font-bold ${user.accommodation === 'YES' ? 'text-emerald-400' : 'text-slate-500'}">${user.accommodation || "NO"}</td>
         <td class="px-4 py-3.5 font-mono text-[11px] text-slate-300">${user.utr}</td>
         <td class="px-4 py-3.5 font-medium text-slate-400 whitespace-nowrap">${user.dateOfReg}</td>
         <td class="px-4 py-3.5 text-right font-mono font-black text-purple-400 pr-6">₹${(user.amountReceived || 0).toLocaleString('en-IN')}</td>
@@ -286,10 +338,10 @@ function renderTargetedDataGrid() {
       <tr class="whitespace-nowrap text-left bg-slate-900/40 select-none">
         <th class="px-4 py-3.5">Ticket ID</th>
         <th class="px-4 py-3.5">Participant Details</th>
-        <th class="px-4 py-3.5">College / Branch</th>
-        <th class="px-4 py-3.5 text-center">Year</th>
-        <th class="px-4 py-3.5">Transaction UTR</th>
-        <th class="px-4 py-3.5 text-center">Receipt</th>
+        <th class="px-4 py-3.5">College / Branch / Year</th>
+        <th class="px-4 py-3.5">Domain Selection</th>
+        <th class="px-4 py-3.5 text-center">Accom.</th>
+        <th class="px-4 py-3.5">Transaction UTR / Receipt</th>
         <th class="px-4 py-3.5 text-center bg-slate-900/20 text-blue-400 font-black">Date of Reg</th>
         <th class="px-4 py-3.5 text-center bg-slate-900/20 text-blue-400 font-black">Early Bird</th>
         <th class="px-4 py-3.5 text-center bg-slate-900/20 text-blue-400 font-black">Payment</th>
@@ -310,29 +362,43 @@ function renderTargetedDataGrid() {
       var birdValue = user.earlyBird ? user.earlyBird.toString().trim().toUpperCase() : "NULL";
       var birdBtnHtml = "";
       
-      // EXPLICIT ACTION ASSIGNMENTS: Button actions assign the correct text tags straight down the wire
       if (birdValue === "YES") {
-        birdBtnHtml = `<button onclick="dispatchEarlyBirdToggleState(${user.rowNumber}, 'NO')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] px-3 py-1 rounded transition whitespace-nowrap cursor-pointer shadow-sm">YES</button>`;
+        birdBtnHtml = `<button onclick="dispatchEarlyBirdToggleState(${user.rowNumber}, 'NO', '${user.accommodation}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] px-3 py-1 rounded transition whitespace-nowrap cursor-pointer shadow-sm">YES</button>`;
       } else if (birdValue === "NO") {
-        birdBtnHtml = `<button onclick="dispatchEarlyBirdToggleState(${user.rowNumber}, 'YES')" class="bg-slate-700 hover:bg-slate-600 text-slate-300 font-extrabold text-[10px] px-3 py-1 rounded transition whitespace-nowrap cursor-pointer shadow-sm">NO</button>`;
+        birdBtnHtml = `<button onclick="dispatchEarlyBirdToggleState(${user.rowNumber}, 'YES', '${user.accommodation}')" class="bg-slate-700 hover:bg-slate-600 text-slate-300 font-extrabold text-[10px] px-3 py-1 rounded transition whitespace-nowrap cursor-pointer shadow-sm">NO</button>`;
       } else {
         birdBtnHtml = `
           <div class="inline-flex gap-1 bg-slate-950/40 p-1 rounded-lg border border-slate-700/40">
-            <button onclick="dispatchEarlyBirdToggleState(${user.rowNumber}, 'YES')" class="bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-400 text-[10px] font-black px-2 py-0.5 rounded transition cursor-pointer">Y</button>
-            <button onclick="dispatchEarlyBirdToggleState(${user.rowNumber}, 'NO')" class="bg-slate-800 hover:bg-rose-600 hover:text-white text-slate-400 text-[10px] font-black px-2 py-0.5 rounded transition cursor-pointer">N</button>
+            <button onclick="dispatchEarlyBirdToggleState(${user.rowNumber}, 'YES', '${user.accommodation}')" class="bg-slate-800 hover:bg-emerald-600 hover:text-white text-slate-400 text-[10px] font-black px-2 py-0.5 rounded transition cursor-pointer">Y</button>
+            <button onclick="dispatchEarlyBirdToggleState(${user.rowNumber}, 'NO', '${user.accommodation}')" class="bg-slate-800 hover:bg-rose-600 hover:text-white text-slate-400 text-[10px] font-black px-2 py-0.5 rounded transition cursor-pointer">N</button>
           </div>`;
       }
 
       var financialColumnRenderText = user.status === "Pending" ? `<span class="text-slate-500 italic font-mono select-none">Unearned</span>` : `<span class="font-mono font-bold text-slate-200 whitespace-nowrap">₹${user.amountReceived || 0}</span>`;
+      
+      // Dynamic on-the-fly preview tracking calculation value configuration
+      let baseTicketRate = (birdValue === "YES") ? systemConfigState.earlyBirdPrice : systemConfigState.regularPrice;
+      let hostAccomodationRate = (user.accommodation === "YES") ? systemConfigState.accommodationPrice : 0;
+      let finalLiveSuggestedPrice = baseTicketRate + hostAccomodationRate;
 
       return `
         <tr class="hover:bg-slate-950/20 transition duration-100 border-b border-slate-700/20 text-xs whitespace-nowrap">
           <td class="px-4 py-3.5">${trID}</td>
-          <td class="px-4 py-3.5"><div class="font-bold text-slate-100 max-w-[130px] truncate" title="${user.fullName}">${user.fullName}</div><div class="text-[10px] text-slate-400 font-mono mt-0.5 max-w-[130px] truncate">${user.email}</div></td>
-          <td class="px-4 py-3.5"><div class="uppercase font-bold text-slate-300 max-w-[130px] truncate" title="${user.college}">${user.college}</div><div class="uppercase text-[10px] text-slate-400 mt-0.5 max-w-[130px] truncate">${user.branch}</div></td>
-          <td class="px-4 py-3.5 font-black text-center">${user.year}</td>
-          <td class="px-4 py-3.5 font-mono text-[11px] tracking-wide text-slate-300 select-all">${user.utr}</td>
-          <td class="px-4 py-3.5 text-center">${user.screenshot && user.screenshot !== "null" ? `<a href="${user.screenshot}" target="_blank" class="text-blue-400 font-bold underline">View Image</a>` : `<span class="text-slate-600 italic select-none">null</span>`}</td>
+          <td class="px-4 py-3.5">
+            <div class="font-bold text-slate-100 max-w-[130px] truncate" title="${user.fullName}">${user.fullName}</div>
+            <div class="text-[10px] text-slate-400 font-mono mt-0.5 max-w-[130px] truncate">${user.email}</div>
+            <div class="text-[9px] text-blue-400 font-bold tracking-wider uppercase mt-0.5">${user.gender || "UNKNOWN"}</div>
+          </td>
+          <td class="px-4 py-3.5">
+            <div class="uppercase font-bold text-slate-300 max-w-[130px] truncate" title="${user.college}">${user.college}</div>
+            <div class="uppercase text-[10px] text-slate-400 mt-0.5 max-w-[130px] truncate">${user.branch} <span class="text-slate-500 font-normal">[Y${user.year}]</span></div>
+          </td>
+          <td class="px-4 py-3.5 font-semibold text-slate-300">${user.domainSelection || "Unassigned"}</td>
+          <td class="px-4 py-3.5 text-center font-extrabold ${user.accommodation === 'YES' ? 'text-emerald-400' : 'text-slate-600'}">${user.accommodation || "NO"}</td>
+          <td class="px-4 py-3.5">
+            <div class="font-mono text-[11px] tracking-wide text-slate-300 select-all">${user.utr}</div>
+            <div class="mt-0.5">${user.screenshot && user.screenshot !== "null" ? `<a href="${user.screenshot}" target="_blank" class="text-blue-400 font-bold underline text-[10px]">View Image</a>` : `<span class="text-slate-600 italic select-none text-[10px]">null</span>`}</div>
+          </td>
           
           <td class="px-4 py-3.5 text-center font-bold text-slate-200 bg-slate-900/10">${user.dateOfReg}</td>
           <td class="px-4 py-3.5 text-center bg-slate-900/10">${birdBtnHtml}</td>
@@ -341,7 +407,7 @@ function renderTargetedDataGrid() {
           <td class="px-4 py-3.5 text-center"><span class="px-2.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${badgeStyleClass}">${user.status}</span></td>
           <td class="px-4 py-3.5 text-right pr-6">
             ${user.status === 'Pending' ? `
-              <button onclick="dispatchApprovalActionWithLockedPrice(${user.rowNumber}, '${birdValue}')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[10px] uppercase tracking-wider px-2.5 py-1.5 rounded-lg shadow cursor-pointer transition">Approve</button>
+              <button onclick="dispatchApprovalActionWithLockedPrice(${user.rowNumber}, ${finalLiveSuggestedPrice})" class="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[10px] uppercase tracking-wider px-2.5 py-1.5 rounded-lg shadow cursor-pointer transition">Approve (₹${finalLiveSuggestedPrice})</button>
               <button onclick="dispatchAdminOperationAction(${user.rowNumber}, 'reject')" class="bg-rose-600/10 hover:bg-rose-600 text-rose-400 text-[10px] font-bold px-2.5 py-1.5 rounded-lg cursor-pointer transition">Reject</button>
             ` : `<span class="text-slate-500 text-[10px] font-mono select-none">Processed</span>`}
           </td>
@@ -387,19 +453,12 @@ function renderTargetedDataGrid() {
   }
 }
 
-// RESTORED APPROVAL PRICE ASSIGNER: Pulls the correct console value depending on the early bird tag
-async function dispatchApprovalActionWithLockedPrice(rowNumber, earlyBirdCurrentTag) {
-  const normalPriceValue = parseInt(document.getElementById('costPerPersonInput').value, 10) || 0;
-  const earlyBirdPriceValue = parseInt(document.getElementById('earlyBirdPriceInput').value, 10) || 0;
-  
-  // Checks active state BEFORE stamping row to protect selections made prior to approval clicking
-  const targetRateToLock = (earlyBirdCurrentTag === "YES") ? earlyBirdPriceValue : normalPriceValue;
-
-  if (!confirm(`Verify payment and lock row reference #${rowNumber} at rate tier of ₹${targetRateToLock}?`)) return;
+async function dispatchApprovalActionWithLockedPrice(rowNumber, directCalculatedSuggestedPriceValue) {
+  if (!confirm(`Verify registration payment and lock record entry reference row #${rowNumber} at calculated rate tier of ₹${directCalculatedSuggestedPriceValue}?`)) return;
   try {
     const response = await fetch(BACKEND_API_URL, {
       method: 'POST',
-      body: JSON.stringify({ action: "approve", rowNumber: rowNumber, costPerHead: targetRateToLock })
+      body: JSON.stringify({ action: "approve", rowNumber: rowNumber, costPerHead: directCalculatedSuggestedPriceValue })
     });
     const result = await response.json();
     alert(result.message);
@@ -407,12 +466,11 @@ async function dispatchApprovalActionWithLockedPrice(rowNumber, earlyBirdCurrent
   } catch (error) { alert("Approval pipeline fault: " + error.toString()); }
 }
 
-async function dispatchEarlyBirdToggleState(rowNumber, targetValueString) {
-  const normalPriceValue = parseInt(document.getElementById('costPerPersonInput').value, 10) || 0;
-  const earlyBirdPriceValue = parseInt(document.getElementById('earlyBirdPriceInput').value, 10) || 0;
-
-  // Evaluates target value input to force correct mathematical switches downstream
-  const dynamicCalculatedPrice = (targetValueString === "YES") ? earlyBirdPriceValue : normalPriceValue;
+async function dispatchEarlyBirdToggleState(rowNumber, targetValueString, userAccomodationTagValue) {
+  let ticketRateComponent = (targetValueString === "YES") ? systemConfigState.earlyBirdPrice : systemConfigState.regularPrice;
+  let accomodationRateComponent = (userAccomodationTagValue === "YES") ? systemConfigState.accommodationPrice : 0;
+  
+  const finalizedRecalculatedPriceSum = ticketRateComponent + accomodationRateComponent;
 
   try {
     const response = await fetch(BACKEND_API_URL, {
@@ -421,14 +479,14 @@ async function dispatchEarlyBirdToggleState(rowNumber, targetValueString) {
         action: "toggleEarlyBird", 
         rowNumber: rowNumber, 
         earlyBirdValue: targetValueString,
-        calculatedPrice: dynamicCalculatedPrice 
+        calculatedPrice: finalizedRecalculatedPriceSum 
       })
     });
     const result = await response.json();
     if (result.status === "success") {
-      synchronizeCloudLedger(false);
+      synchronizeCloudLedger(true);
     }
-  } catch (error) { console.error("Toggle fault: ", error); }
+  } catch (error) { console.error("Toggle error exception: ", error); }
 }
 
 async function dispatchManualAttendanceCheckIn(rowNumber, attendeeName) {
@@ -458,20 +516,20 @@ async function dispatchAdminOperationAction(rowNumber, actionName) {
 }
 
 function processCsvExportTask() {
-  if (masterRecordsCache.length === 0) { return; }
-  const csvHeadersRow = ["Timestamp", "Registration ID", "Full Name", "Email Address", "Phone Number", "College", "Branch", "Year", "UPI Transaction ID", "Screenshot Drive Link", "Status", "Check-In Timestamp", "Amount Received", "Date of Registration", "Early Bird Status"];
+  if (masterRecordsCache.length === 0) return;
+  const csvHeadersRow = ["Timestamp", "Registration ID", "Full Name", "Email Address", "Phone Number", "Gender", "College", "Branch", "Year", "Domain Selection", "Accommodation", "UPI Transaction ID", "Screenshot Drive Link", "Status", "Check-In Timestamp", "Amount Received", "Date of Registration", "Early Bird Status"];
   const sanitizedStringRowsArray = masterRecordsCache.map(r => [
     `"${(r.timestamp || '')}"`, `"${(r.regId || '')}"`, `"${(r.fullName || '')}"`, `"${(r.email || '')}"`,
-    `"${(r.phone || '')}"`, `"${(r.college || '')}"`, `"${(r.branch || '')}"`, `"${(r.year || '')}"`,
-    `"${(r.utr || '')}"`, `"${(r.screenshot || '')}"`, `"${(r.status || '')}"`, `"${(r.checkInTime || '')}"`,
-    r.amountReceived, `"${r.dateOfReg}"`, `"${r.earlyBird}"`
+    `"${(r.phone || '')}"`, `"${(r.gender || '')}"`, `"${(r.college || '')}"`, `"${(r.branch || '')}"`, `"${(r.year || '')}"`,
+    `"${(r.domainSelection || '')}"`, `"${(r.accommodation || '')}"`, `"${(r.utr || '')}"`, `"${(r.screenshot || '')}"`,
+    `"${(r.status || '')}"`, `"${(r.checkInTime || '')}"`, r.amountReceived, `"${r.dateOfReg}"`, `"${r.earlyBird}"`
   ].join(","));
   const fullCsvStringContent = csvHeadersRow.join(",") + "\n" + sanitizedStringRowsArray.join("\n");
   const binaryMemoryBlob = new Blob([fullCsvStringContent], { type: 'text/csv;charset=utf-8;' });
   const temporaryBlobDownloadUrlPointer = URL.createObjectURL(binaryMemoryBlob);
   const anchorDownloadLink = document.createElement("a");
   anchorDownloadLink.setAttribute("href", temporaryBlobDownloadUrlPointer);
-  anchorDownloadLink.setAttribute("download", "AUNSF_Historical_Revenue_Report_2026.csv");
+  anchorDownloadLink.setAttribute("download", "AUNSF_Structural_Event_Ledger_2026.csv");
   document.body.appendChild(anchorDownloadLink);
   anchorDownloadLink.click(); document.body.removeChild(anchorDownloadLink);
 }

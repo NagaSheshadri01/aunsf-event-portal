@@ -15,43 +15,60 @@
 </head>
 <body class="text-slate-100 min-h-screen p-4 md:p-8 antialiased selection:bg-blue-500/20">
 
-  <div class="max-w-[1600px] mx-auto space-y-6">
+  <div class="max-w-[1650px] mx-auto space-y-6">
     
     <!-- Top Identity Status Card -->
-    <div class="bg-slate-900/40 border border-slate-800/80 rounded-3xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 backdrop-blur-md">
+    <div class="bg-slate-900/40 border border-slate-800/80 rounded-3xl p-6 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 backdrop-blur-md">
       <div class="space-y-1">
         <h1 class="text-2xl font-black tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">AUNSF Event Master Operations Console</h1>
-        <p class="text-slate-400 text-xs font-medium">Real-Time Registration Verification, Distribution Analytics & Ticket Audits</p>
+        <p class="text-slate-400 text-xs font-medium">Real-Time Registration Verification, Central Financial Architecture, Distribution Analytics & Ticket Audits</p>
       </div>
       
-      <!-- CONFIGURATION CONTAINER FOR TWO SEPARATE PRICING SCHEMAS -->
-      <div class="flex flex-wrap items-center gap-4">
-        <div class="flex items-center gap-4 bg-slate-950/60 border border-slate-800 px-4 py-2.5 rounded-2xl shadow-inner">
+      <!-- CENTRAL LIVE SYSTEMS CONFIGURATION FRAMEWORK CONTROL PANEL -->
+      <div class="flex flex-wrap items-center gap-4 w-full lg:w-auto">
+        <div class="flex flex-wrap items-center gap-4 bg-slate-950/60 border border-slate-800/80 px-4 py-3 rounded-2xl shadow-inner text-xs w-full sm:w-auto">
           <div class="flex items-center gap-1.5">
-            <span class="text-[10px] font-black text-slate-500 uppercase tracking-wider">Normal Price:</span>
-            <input type="number" id="costPerPersonInput" value="1000" class="w-16 bg-slate-900 border border-slate-700/60 rounded-lg text-xs p-1 font-black text-center text-white outline-none focus:border-blue-500 transition" />
+            <span class="text-[10px] font-black text-slate-500 uppercase tracking-wider">Regular:</span>
+            <input type="number" id="regularPriceInput" value="1000" class="w-14 bg-slate-900 border border-slate-700/60 rounded-lg text-xs p-1 font-black text-center text-white outline-none focus:border-blue-500 transition" />
           </div>
           <div class="w-px h-4 bg-slate-800"></div>
           <div class="flex items-center gap-1.5">
-            <span class="text-[10px] font-black text-slate-500 uppercase tracking-wider">Early Bird Price:</span>
-            <input type="number" id="earlyBirdPriceInput" value="500" class="w-16 bg-slate-900 border border-slate-700/60 rounded-lg text-xs p-1 font-black text-center text-white outline-none focus:border-blue-500 transition" />
+            <span class="text-[10px] font-black text-slate-500 uppercase tracking-wider">Early-Bird:</span>
+            <input type="number" id="earlyBirdPriceInput" value="500" class="w-14 bg-slate-900 border border-slate-700/60 rounded-lg text-xs p-1 font-black text-center text-white outline-none focus:border-blue-500 transition" />
           </div>
+          <div class="w-px h-4 bg-slate-800"></div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-[10px] font-black text-slate-500 uppercase tracking-wider">Accomodation:</span>
+            <input type="number" id="accommodationPriceInput" value="300" class="w-14 bg-slate-900 border border-slate-700/60 rounded-lg text-xs p-1 font-black text-center text-white outline-none focus:border-blue-500 transition" />
+          </div>
+          <div class="w-px h-4 bg-slate-800"></div>
+          
+          <!-- CENTRAL MASTER SWITCH TOGGLE BUTTON FOR ON/OFF TIMELINES -->
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] font-black text-blue-400 uppercase tracking-wider">Early-Bird Timeline:</span>
+            <label class="relative inline-flex items-center cursor-pointer select-none">
+              <input type="checkbox" id="earlyBirdModeToggle" class="sr-only peer">
+              <div class="w-8 h-4 bg-slate-800 rounded-full peer peer-focus:ring-2 peer-focus:ring-blue-500/20 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-slate-400 after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-600 peer-checked:after:bg-white"></div>
+            </label>
+          </div>
+          
+          <button id="saveConfigBtn" class="bg-blue-600/20 hover:bg-blue-600 border border-blue-700 text-blue-400 hover:text-white text-[10px] font-extrabold px-2.5 py-1 rounded-lg transition tracking-wide cursor-pointer ml-2">💾 Save Config</button>
         </div>
 
-        <div class="flex items-center gap-2 bg-slate-950/40 p-1.5 border border-slate-800 rounded-2xl">
+        <div class="flex items-center gap-2 bg-slate-950/40 p-1.5 border border-slate-800 rounded-2xl overflow-x-auto w-full sm:w-auto">
           <button id="btnRegMode" class="view-mode-btn bg-blue-600 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow transition tracking-wide cursor-pointer whitespace-nowrap">📋 Registration Hub</button>
           <button id="btnLookoverMode" class="view-mode-btn bg-slate-800 text-slate-400 hover:bg-slate-700 font-bold text-xs px-4 py-2.5 rounded-xl transition tracking-wide cursor-pointer whitespace-nowrap">🪪 Attendance Lookover</button>
           <button id="btnRevenueMode" class="view-mode-btn bg-slate-800 text-slate-400 hover:bg-slate-700 font-bold text-xs px-4 py-2.5 rounded-xl transition tracking-wide cursor-pointer whitespace-nowrap">💰 Revenue Analysis Hub</button>
         </div>
 
-        <div class="flex items-center gap-2">
-          <button id="exportCsvBtn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-3 rounded-xl shadow transition cursor-pointer">📥 Export CSV</button>
-          <button id="refreshBtn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-4 py-3 rounded-xl shadow transition cursor-pointer">🔄 Refresh</button>
+        <div class="flex items-center gap-2 ml-auto lg:ml-0">
+          <button id="exportCsvBtn" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-3 rounded-xl shadow transition cursor-pointer whitespace-nowrap">📥 Export CSV</button>
+          <button id="refreshBtn" class="bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs px-4 py-3 rounded-xl shadow transition cursor-pointer whitespace-nowrap">🔄 Refresh</button>
         </div>
       </div>
     </div>
 
-    <!-- HUD METRIC COUNTERS -->
+    <!-- HUD METRIC STATE HUB COUNTERS -->
     <div id="metricsCountersGrid" class="grid grid-cols-2 md:grid-cols-5 gap-4">
       <div class="bg-slate-900/30 border border-slate-800 p-5 rounded-2xl"><div class="text-[10px] uppercase tracking-wider font-bold text-slate-500">Total Registrations</div><div id="countTotal" class="text-2xl font-black mt-1 text-slate-200">0</div></div>
       <div class="bg-slate-900/30 border border-slate-800 p-5 rounded-2xl"><div class="text-[10px] uppercase tracking-wider font-bold text-amber-500">Pending Records</div><div id="countPending" class="text-2xl font-black mt-1 text-amber-400">0</div></div>
@@ -60,7 +77,7 @@
       <div class="bg-slate-900/30 border border-slate-800 p-5 rounded-2xl"><div class="text-[10px] uppercase tracking-wider font-bold text-blue-500">Checked In</div><div id="countCheckedIn" class="text-2xl font-black mt-1 text-blue-400">0</div></div>
     </div>
 
-    <!-- FILTERS TOOLBAR CONTAINER -->
+    <!-- QUERY MANAGEMENT CRITERIA SYSTEM FILTERS -->
     <div id="filterToolbarContainer" class="bg-slate-900/20 border border-slate-800 p-5 rounded-2xl space-y-4">
       <div class="flex items-center justify-between border-b border-slate-800 pb-2"><h3 class="text-xs font-black uppercase text-slate-400 tracking-wider">Multi-Criteria Evaluation Query System Filters</h3><button id="clearFiltersBtn" class="bg-rose-950/40 text-rose-400 border border-rose-900/60 text-[10px] font-bold px-3 py-1 rounded-lg hover:bg-rose-900 hover:text-white transition cursor-pointer">🧹 Clear All Filters</button></div>
       <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 text-xs">
@@ -72,22 +89,22 @@
       </div>
     </div>
 
-    <!-- DATE TIMELINE BANNER -->
+    <!-- SCOPE TIMELINE CONTROL ACCELERATOR BANNER -->
     <div id="activeScopeBanner" class="hidden bg-blue-950/40 border border-blue-900/60 p-3.5 rounded-xl flex items-center justify-between text-xs text-blue-300 font-semibold transition">
       <span id="activeScopeText"></span>
       <button id="btnResetScopeBypass" class="text-white underline font-black bg-blue-900/60 px-2 py-0.5 rounded cursor-pointer">Back to Master View</button>
     </div>
 
-    <!-- MAIN GRID DATA REGIONS -->
+    <!-- PRINCIPAL CONTROL VIEW SCREEN WRAPPERS -->
     <div class="flex flex-col lg:flex-row gap-6 items-start">
       <div class="w-full lg:flex-1 bg-slate-900/20 border border-slate-800/80 rounded-3xl overflow-hidden shadow-2xl backdrop-blur-sm overflow-x-auto">
-        <table class="w-full text-left border-collapse min-w-[900px]">
+        <table class="w-full text-left border-collapse min-w-[1100px]">
           <thead id="tableHeaderBlock"></thead>
           <tbody id="tableBodyBlock" class="divide-y divide-slate-800/40 text-slate-300 font-medium"></tbody>
         </table>
       </div>
 
-      <!-- SIDEBAR COMPONENTS -->
+      <!-- ANALYTICS DISTRIBUTION DECK REGION -->
       <div id="sidebarArea" class="hidden w-full lg:w-[380px] space-y-4 shrink-0 transition-all duration-300">
         <div class="bg-gradient-to-br from-purple-950/40 to-slate-900/40 border border-purple-900/30 p-6 rounded-3xl shadow-xl backdrop-blur-md">
           <div class="text-[11px] font-black uppercase text-purple-400 tracking-wider">Gross Total Financial Pipeline</div>
