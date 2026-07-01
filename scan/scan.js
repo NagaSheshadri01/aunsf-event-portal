@@ -32,7 +32,7 @@ function initializeCameraScanningStream() {
       terminateCameraStreamBypass();
       dispatchCheckInTicketPayload(decodedText.trim());
     },
-    (errorMessage) => { /* Silent background framing log catch boundaries */ }
+    (errorMessage) => { /* Silent background framing log capture boundaries */ }
   ).then(() => {
     hardwareCameraScanStreamIsActive = true;
   }).catch(err => {
@@ -85,7 +85,6 @@ async function dispatchCheckInTicketPayload(ticketRegistrationIdToken) {
   loaderBanner.classList.remove('hidden');
   feedbackDeck.classList.add('hidden');
 
-  // Push immediate verification token metric log to history timeline
   appendScanHistoryRow(ticketRegistrationIdToken, "Verifying credentials...⌛");
 
   try {
@@ -154,7 +153,7 @@ function renderGateVerificationResponseUI(isSuccess, serverMessage, attendeeReco
             <span class="font-black text-purple-400 uppercase tracking-wide">${attendeeRecordObj.domainSelection || "NOT SELECTED"}</span>
           </div>
           <div class="flex items-center justify-between border-b border-slate-800/60 pb-1.5">
-            <span class="text-slate-500 font-bold uppercase tracking-wider">Housing Accomodation:</span>
+            <span class="text-slate-500 font-bold uppercase tracking-wider">Housing Accommodation:</span>
             <span class="font-black px-2 py-0.5 rounded text-[10px] ${attendeeRecordObj.accommodation === 'YES' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-800 text-slate-400'}">${attendeeRecordObj.accommodation || "NO"}</span>
           </div>
           <div class="flex items-center justify-between">
@@ -172,7 +171,7 @@ function renderGateVerificationResponseUI(isSuccess, serverMessage, attendeeReco
     container.innerHTML = `
       <div class="space-y-4 animate-fade-in">
         <div class="${alertClass} border p-5 rounded-xl text-center space-y-2">
-          <div class="text-lg font-black uppercase tracking-wider">ACCESS DENIED SYSTEM FAULT</div>
+          <div class="text-lg font-black uppercase tracking-wider">ACCESS DENIED</div>
           <p class="text-xs font-semibold text-slate-300 leading-relaxed">${serverMessage}</p>
         </div>
         <button onclick="dismissGateVerificationOverlay()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs py-3 rounded-xl transition cursor-pointer">Dismiss Dashboard</button>
