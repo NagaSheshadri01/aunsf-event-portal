@@ -130,7 +130,6 @@ function setupModeButtonsViewRoutingControlEngine() {
   });
 }
 
-// SETUP DOMAIN SELECTION BUTTON TUNNELS FOR ATTENDANCE OVERLAY SCOPE
 function setupAttendanceDomainTabEngine() {
   const buttonsMap = {
     'btnDomainBlueEco': 'Blue Economy',
@@ -149,7 +148,6 @@ function setupAttendanceDomainTabEngine() {
     });
   });
 
-  // Connect isolated export event bindings cleanly
   document.getElementById('exportCsvBlueEcoBtn').addEventListener('click', () => processCsvExportTask("Blue Economy"));
   document.getElementById('exportCsvMindspaceBtn').addEventListener('click', () => processCsvExportTask("Mindspace"));
   document.getElementById('exportCsvArtsCultureBtn').addEventListener('click', () => processCsvExportTask("Arts & Culture"));
@@ -322,7 +320,7 @@ function renderTargetedDataGrid() {
   let filteredRecordDataset = masterRecordsCache.filter(row => {
     if (activeDayFilterScope && row.dateOfReg !== activeDayFilterScope) return false;
     
-    // ATTENDANCE SUB-TAB ISOLATION MECHANISM RULE: Filters lookover view strictly by chosen button
+    // TAB ENGINE ROUTING FILTER RULES
     if (dashboardViewMode === "attendance") {
       if (row.status !== "Approved" && row.status !== "Checked-in") return false;
       if (row.domainSelection !== activeAttendanceDomainTab) return false;
@@ -474,7 +472,7 @@ function renderTargetedDataGrid() {
       </tr>`;
 
     if (filteredRecordDataset.length === 0) {
-      bodyBlock.innerHTML = `<tr><td colspan="7" class="text-center py-12 text-slate-500 italic font-bold">No valid entries found for this specific domain scope.</td></tr>`;
+      bodyBlock.innerHTML = `<tr><td colspan="7" class="text-center py-12 text-slate-500 italic font-bold">No valid entries identified.</td></tr>`;
       return;
     }
 
@@ -562,17 +560,16 @@ async function dispatchAdminOperationAction(rowNumber, actionName) {
   } catch (error) { alert("API execution error: " + error.toString()); }
 }
 
-// FULL SANITIZATION UPGRADE: Escapes all string metadata explicitly to stop spreadsheet hash corruptions
+// FIXED EXPORT CORE COMPILER: Maps full 18 columns matching your exact spreadsheet configuration rows
 function processCsvExportTask(filterDomainScopeName = "GLOBAL_ALL") {
   let targetExportList = masterRecordsCache;
-  let compiledFileName = "AUNSF_Structural_Event_Ledger_2026.csv";
+  let compiledFileName = "AUNSF_Master_Event_Ledger_2026.csv";
 
   if (filterDomainScopeName !== "GLOBAL_ALL") {
-    // Isolated check-in dataset filter
     targetExportList = masterRecordsCache.filter(r => 
       (r.status === "Approved" || r.status === "Checked-in") && r.domainSelection === filterDomainScopeName
     );
-    compiledFileName = `AUNSF_Attendance_${filterDomainScopeName.replace(/\s+/g, '_')}_2026.csv`;
+    compiledFileName = `AUNSF_Attendance_Ledger_${filterDomainScopeName.replace(/\s+/g, '_')}_2026.csv`;
   }
 
   if (targetExportList.length === 0) {
@@ -580,39 +577,42 @@ function processCsvExportTask(filterDomainScopeName = "GLOBAL_ALL") {
     return;
   }
 
+  // Exact 18 columns in chronological master layout orientation sequence order bounds
   const csvHeadersRow = [
     "Timestamp", "Registration ID", "Full Name", "Email Address", "Phone Number", 
     "Gender", "College", "Branch", "Year", "Domain Selection", 
-    "Accommodation", "UPI Transaction ID", "Screenshot Drive Link", "Status", 
-    "Check-In Timestamp", "Amount Received", "Date of Registration", "Early Bird Status"
+    "Accommodation", "UPI Transaction ID", "Payment Screenshot Link", "Date of Registration", 
+    "Early Bird Status", "Amount Received", "Status", "Check-In Timestamp"
   ];
 
-  // Helper formula to strip carriage breaks and safely wrap inside strict column quotes
-  const escapeCellString = (val) => {
+  const escapeCellString = (val, forceTextLiteral = false) => {
     if (val === undefined || val === null || val === "null") return '""';
-    let cleanStr = val.toString().replace(/"/g, '""'); // Double quote escape format rules
+    let cleanStr = val.toString().replace(/"/g, '""'); 
+    if (forceTextLiteral) {
+      return `"\t${cleanStr}"`; 
+    }
     return `"${cleanStr}"`;
   };
 
   const sanitizedStringRowsArray = targetExportList.map(r => [
     escapeCellString(r.timestamp),
-    escapeCellString(r.regId),
+    escapeCellString(r.regId, true), 
     escapeCellString(r.fullName),
     escapeCellString(r.email),
-    escapeCellString(r.phone),
+    escapeCellString(r.phone, true), 
     escapeCellString(r.gender),
     escapeCellString(r.college),
     escapeCellString(r.branch),
     escapeCellString(r.year),
     escapeCellString(r.domainSelection),
     escapeCellString(r.accommodation),
-    escapeCellString(r.utr),
+    escapeCellString(r.utr, true),   
     escapeCellString(r.screenshot),
+    escapeCellString(r.dateOfReg),   
+    escapeCellString(r.earlyBird),   
+    r.amountReceived !== "" ? (parseInt(r.amountReceived, 10) || 0) : 0, 
     escapeCellString(r.status),
-    escapeCellString(r.checkInTime),
-    parseInt(r.amountReceived, 10) || 0, // Numbers pass explicitly raw without hash padding
-    escapeCellString(r.dateOfReg),
-    escapeCellString(r.earlyBird)
+    escapeCellString(r.checkInTime)
   ].join(","));
 
   const fullCsvStringContent = "\uFEFF" + csvHeadersRow.join(",") + "\n" + sanitizedStringRowsArray.join("\n");
