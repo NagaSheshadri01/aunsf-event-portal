@@ -280,7 +280,7 @@ function renderTargetedDataGrid() {
   let filteredRecordDataset = masterRecordsCache.filter(row => {
     if (activeDayFilterScope && row.dateOfReg !== activeDayFilterScope) return false;
     
-    // CRITICAL REQ RECTIFICATION: Exclusively allow Approved or Checked-in records inside Attendance deck
+    // EXCLUSIVE REQUIREMENT COMPILER FILTER: Strict isolate block bounds
     if (dashboardViewMode === "attendance") {
       if (row.status !== "Approved" && row.status !== "Checked-in") return false;
     } else if (dashboardViewMode === "revenue") {
@@ -364,9 +364,9 @@ function renderTargetedDataGrid() {
       var birdBtnHtml = "";
       
       if (birdValue === "YES") {
-        birdBtnHtml = `<button onclick="dispatchEarlyBirdToggleState(${user.rowNumber}, 'NO', '${user.accommodation}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] px-3 py-1 rounded transition whitespace-nowrap cursor-pointer shadow-sm">YES</button>`;
+        birdBtnHtml = `<button onclick="dispatchEarlyBirdToggleState(${user.rowNumber}, 'NO')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] px-3 py-1 rounded transition whitespace-nowrap cursor-pointer shadow-sm">YES</button>`;
       } else if (birdValue === "NO") {
-        birdBtnHtml = `<button onclick="dispatchEarlyBirdToggleState(${user.rowNumber}, 'YES', '${user.accommodation}')" class="bg-slate-700 hover:bg-slate-600 text-slate-300 font-extrabold text-[10px] px-3 py-1 rounded transition whitespace-nowrap cursor-pointer shadow-sm">NO</button>`;
+        birdBtnHtml = `<button onclick="dispatchEarlyBirdToggleState(${user.rowNumber}, 'YES')" class="bg-slate-700 hover:bg-slate-600 text-slate-300 font-extrabold text-[10px] px-3 py-1 rounded transition whitespace-nowrap cursor-pointer shadow-sm">NO</button>`;
       } else {
         birdBtnHtml = `
           <div class="inline-flex gap-1 bg-slate-950/40 p-1 rounded-lg border border-slate-700/40">
@@ -381,7 +381,6 @@ function renderTargetedDataGrid() {
       let hostAccomodationRate = (user.accommodation === "YES") ? systemConfigState.accommodationPrice : 0;
       let finalLiveSuggestedPrice = baseTicketRate + hostAccomodationRate;
 
-      // FIXED ACTION CONTAINER CONDITIONAL LOOKUP
       let actionColumnHtml = `<span class="text-slate-500 text-[10px] font-mono select-none">Processed</span>`;
       if (user.status.toLowerCase() === "pending") {
         actionColumnHtml = `
