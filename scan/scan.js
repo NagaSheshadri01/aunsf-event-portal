@@ -1,146 +1,201 @@
-const BACKEND_API_URL = "https://script.google.com/macros/s/AKfycby5bz0GI20VxLh_FQOESgzX9V1N54KaPxHuDKlSZT_uu7rswK8QfU0gbxW4k3BSCfqpXQ/exec"; 
+const BACKEND_API_URL = "https://script.google.com/macros/s/AKfycbxV5iYwbY8xBoMnki_N8qKosRk2mu9kukqm8Hqg4quYT6OtFLJyYiQi_rnXTEdjzTr9/exec";
 
-let html5Qrcode;
-let isScannerRunning = false;
-let sessionScanHistory = [];
+let html5QrCodeScannerInstance = null;
+let hardwareCameraScanStreamIsActive = false;
 
-window.onload = function() {
-  html5Qrcode = new Html5Qrcode("reader");
-  document.getElementById('scanTriggerBtn').addEventListener('click', manageScannerState);
+window.onload = () => {
+  document.getElementById('startScannerBtn').addEventListener('click', toggleHardwareLensScanningPipeline);
+  document.getElementById('manualCheckInBtn').addEventListener('click', executeManualInputIdCheckIn);
 };
 
-function manageScannerState() {
-  if (isScannerRunning) return;
-  
-  const placeholder = document.getElementById('scannerPlaceholder');
-  const readerElement = document.getElementById('reader');
-  const btn = document.getElementById('scanTriggerBtn');
-  
-  placeholder.classList.add('hidden');
-  readerElement.classList.remove('hidden');
-  
-  btn.disabled = true;
-  btn.className = "w-full bg-slate-700 font-bold py-3 px-4 rounded-xl cursor-not-allowed text-slate-400 select-none transition";
-  btn.innerText = "🔍 Camera Viewport Engaged...";
+function toggleHardwareLensScanningPipeline() {
+  if (hardwareCameraScanStreamIsActive) {
+    terminateCameraStreamBypass();
+  } else {
+    initializeCameraScanningStream();
+  }
+}
 
-  html5Qrcode.start(
+function initializeCameraScanningStream() {
+  const triggerBtn = document.getElementById('startScannerBtn');
+  triggerBtn.innerText = "🛑 Stop QR Scanner";
+  triggerBtn.className = "w-full bg-rose-600 hover:bg-rose-500 text-white font-bold text-sm py-4 px-6 rounded-xl shadow-lg transition tracking-wide cursor-pointer flex items-center justify-center gap-2";
+  
+  document.getElementById('cameraLensPlaceholderBox').classList.add('hidden');
+  document.getElementById('readerSurfaceBoundary').classList.remove('hidden');
+
+  html5QrCodeScannerInstance = new Html5Qrcode("readerSurfaceBoundary");
+  html5QrCodeScannerInstance.start(
     { facingMode: "environment" },
-    { fps: 12, qrbox: { width: 235, height: 235 } },
-    onQrCodeRead
+    { fps: 10, qrbox: { width: 250, height: 250 } },
+    (decodedText) => {
+      terminateCameraStreamBypass();
+      dispatchCheckInTicketPayload(decodedText.trim());
+    },
+    (errorMessage) => { /* Silent background framing log catch boundaries */ }
   ).then(() => {
-    isScannerRunning = true;
+    hardwareCameraScanStreamIsActive = true;
   }).catch(err => {
-    placeholder.classList.remove('hidden');
-    readerElement.classList.add('hidden');
-    btn.disabled = false;
-    btn.className = "w-full bg-blue-600 hover:bg-blue-500 font-bold py-3 px-4 rounded-xl cursor-pointer shadow";
-    btn.innerText = "📷 Start QR Scanner";
-    alert("Camera Corrupted: " + err);
+    alert("Camera interface activation fault: " + err);
+    terminateCameraStreamBypass();
   });
 }
 
-async function onQrCodeRead(decodedText) {
-  isScannerRunning = false;
+function terminateCameraStreamBypass() {
+  if (html5QrCodeScannerInstance) {
+    html5QrCodeScannerInstance.stop().then(() => {
+      html5QrCodeScannerInstance = null;
+      resetCameraUILayoutElements();
+    }).catch(err => {
+      console.error(err);
+      resetCameraUILayoutElements();
+    });
+  } else {
+    resetCameraUILayoutElements();
+  }
+}
+
+function resetCameraUILayoutElements() {
+  hardwareCameraScanStreamIsActive = false;
+  const triggerBtn = document.getElementById('startScannerBtn');
+  triggerBtn.innerText = "📷 Start QR Scanner";
+  triggerBtn.className = "w-full bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm py-4 px-6 rounded-xl shadow-lg transition tracking-wide cursor-pointer flex items-center justify-center gap-2";
   
-  try {
-    await html5Qrcode.stop();
-  } catch (e) { console.error(e); }
+  document.getElementById('cameraLensPlaceholderBox').classList.remove('hidden');
+  document.getElementById('readerSurfaceBoundary').classList.add('hidden');
+}
 
-  document.getElementById('reader').classList.add('hidden');
-  document.getElementById('scannerPlaceholder').classList.remove('hidden');
+function executeManualInputIdCheckIn() {
+  const inputField = document.getElementById('manualRegIdInput');
+  const targetIdString = inputField.value.trim().toUpperCase();
+  if (!targetIdString) {
+    alert("Please enter a valid Registration Ticket ID.");
+    return;
+  }
+  inputField.value = "";
+  dispatchCheckInTicketPayload(targetIdString);
+}
 
-  const box = document.getElementById('resultBox');
-  const msg = document.getElementById('resultMessage');
-  const title = document.getElementById('resultTitle');
-  const badge = document.getElementById('pStatusBadge');
-  const details = document.getElementById('verticalDetailsContainer');
-  const btn = document.getElementById('scanTriggerBtn');
-
-  // Reset and hide container cleanly before loading to avoid abrupt structural layout pops
-  details.classList.add('hidden');
-  box.className = "p-4 rounded-xl text-sm font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 text-left space-y-3 opacity-0 transition-all duration-200";
-  badge.className = "hidden";
-  title.innerText = "Verifying Ticket Pass...";
-  msg.innerText = "Querying ledger database rows for: " + decodedText;
-  box.classList.remove('hidden');
+async function dispatchCheckInTicketPayload(ticketRegistrationIdToken) {
+  const statusOverlay = document.getElementById('statusVerificationOverlay');
+  const loaderBanner = document.getElementById('loaderProcessingBanner');
+  const feedbackDeck = document.getElementById('scannerFeedbackDeck');
   
-  // Smoothly fade in the loading state box
-  setTimeout(() => { box.classList.remove('opacity-0'); }, 50);
+  statusOverlay.classList.remove('hidden');
+  loaderBanner.classList.remove('hidden');
+  feedbackDeck.classList.add('hidden');
 
-  let rowColorClass = "text-rose-400";
-  let statusSummaryText = "Verification failed.";
+  // Push immediate verification token metric log to history timeline
+  appendScanHistoryRow(ticketRegistrationIdToken, "Verifying credentials...⌛");
 
   try {
     const response = await fetch(BACKEND_API_URL, {
       method: 'POST',
-      body: JSON.stringify({ action: "checkin", regId: decodedText })
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: "checkin", regId: ticketRegistrationIdToken })
     });
     
-    const result = await response.json();
-    statusSummaryText = result.message;
+    const outcomeResult = await response.json();
+    loaderBanner.classList.add('hidden');
+    feedbackDeck.classList.remove('hidden');
 
-    if (result.status === "success" || result.status === "duplicate") {
-      const user = result.participant;
-      
-      document.getElementById('pRegId').innerText = user.regId;
-      document.getElementById('pFullName').innerText = user.fullName;
-      document.getElementById('pCollege').innerText = user.college;
-      document.getElementById('pBranch').innerText = user.branch;
-      document.getElementById('pYear').innerText = "Year " + user.year;
-      document.getElementById('pCheckInTime').innerText = user.checkInTime;
-      
-      details.classList.remove('hidden');
-      msg.innerText = ""; 
-      
-      if (result.status === "success") {
-        box.className = "p-4 rounded-xl text-sm font-bold bg-emerald-950/40 text-emerald-400 border-2 border-emerald-500 text-left space-y-3 shadow-lg shadow-emerald-500/10 transition-all duration-300";
-        badge.className = "px-2 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
-        badge.innerText = "ACCESS GRANTED";
-        title.innerText = "ADMISSION CONFIRMED";
-        rowColorClass = "text-emerald-400";
-      } else {
-        box.className = "p-4 rounded-xl text-sm font-bold bg-amber-950/40 text-amber-400 border-2 border-amber-500 text-left space-y-3 shadow-lg shadow-amber-500/10 transition-all duration-300";
-        badge.className = "px-2 py-0.5 rounded text-[9px] font-black uppercase bg-amber-500/20 text-amber-400 border border-amber-500/30";
-        badge.innerText = "DUPLICATE TICKET";
-        title.innerText = "RE-ENTRY WARNING";
-        rowColorClass = "text-amber-400";
-      }
+    if (outcomeResult.status === "success") {
+      renderGateVerificationResponseUI(true, outcomeResult.message, outcomeResult.record);
+      appendScanHistoryRow(ticketRegistrationIdToken, "✅ ADMITTED", "text-emerald-400");
+    } else if (outcomeResult.status === "duplicate") {
+      renderGateVerificationResponseUI(false, outcomeResult.message, null, "DUPLICATE");
+      appendScanHistoryRow(ticketRegistrationIdToken, "⚠️ DUPLICATE PASS", "text-amber-400");
     } else {
-      box.className = "p-4 rounded-xl text-sm font-bold bg-rose-950/40 text-rose-400 border-2 border-rose-500 text-left space-y-3 shadow-lg shadow-rose-500/10 transition-all duration-300";
-      badge.className = "px-2 py-0.5 rounded text-[9px] font-black uppercase bg-rose-500/20 text-rose-400 border border-rose-500/30";
-      badge.innerText = "DENIED";
-      title.innerText = "INVALID ACCREDITATION";
-      msg.innerText = result.message;
+      renderGateVerificationResponseUI(false, outcomeResult.message, null, "REJECTED");
+      appendScanHistoryRow(ticketRegistrationIdToken, "❌ DENIED", "text-rose-400");
     }
-
   } catch (error) {
-    statusSummaryText = "API network link communication timeout.";
-    box.className = "p-4 rounded-xl text-sm font-bold bg-rose-950/40 text-rose-400 border-2 border-rose-500 text-left space-y-3";
-    msg.innerText = "Transmission Breakdown: " + error.toString();
-  } finally { // Fixed typo here from 'final' to 'finally'
-    btn.disabled = false;
-    btn.className = "w-full bg-blue-600 hover:bg-blue-500 font-bold py-3 px-4 rounded-xl cursor-pointer shadow";
-    btn.innerText = "📷 Start QR Scanner";
-
-    sessionScanHistory.unshift({
-      time: new Date().toLocaleTimeString(),
-      id: decodedText,
-      msg: statusSummaryText,
-      style: rowColorClass
-    });
-
-    renderLocalLedgerTable();
+    loaderBanner.classList.add('hidden');
+    feedbackDeck.classList.remove('hidden');
+    renderGateVerificationResponseUI(false, "Transmission Breakdown: Connection timeout or primary ledger synchronizer offline.", null, "ERROR");
+    appendScanHistoryRow(ticketRegistrationIdToken, "💥 NETWORK FAULT", "text-rose-500");
   }
 }
 
-function renderLocalLedgerTable() {
-  const container = document.getElementById('logHistoryContainer');
-  container.innerHTML = sessionScanHistory.map(row => `
-    <div class="py-2 border-b border-slate-800/40 flex flex-col space-y-0.5 select-none">
-      <div class="flex items-center justify-between text-[11px]">
-        <span class="text-slate-400 font-bold">${row.id}</span>
-        <span class="text-slate-500">${row.time}</span>
+function renderGateVerificationResponseUI(isSuccess, serverMessage, attendeeRecordObj = null, errorType = "") {
+  const container = document.getElementById('feedbackContentContainer');
+  
+  if (isSuccess && attendeeRecordObj) {
+    container.innerHTML = `
+      <div class="space-y-4 animate-fade-in">
+        <div class="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-xl text-center">
+          <div class="text-xs font-black text-emerald-400 uppercase tracking-widest">ACCESS ACCREDITED</div>
+          <div class="text-lg font-black text-white mt-1">${serverMessage}</div>
+        </div>
+        
+        <div class="bg-slate-950/60 border border-slate-800 p-4 rounded-xl space-y-3 text-xs">
+          <div class="flex items-center justify-between border-b border-slate-800/60 pb-1.5">
+            <span class="text-slate-500 font-bold uppercase tracking-wider">Ticket Pass ID:</span>
+            <span class="font-mono font-black text-blue-400 text-sm select-all">${attendeeRecordObj.regId}</span>
+          </div>
+          <div class="flex items-center justify-between border-b border-slate-800/60 pb-1.5">
+            <span class="text-slate-500 font-bold uppercase tracking-wider">Participant Name:</span>
+            <span class="font-extrabold text-slate-200 uppercase">${attendeeRecordObj.fullName}</span>
+          </div>
+          <div class="flex items-center justify-between border-b border-slate-800/60 pb-1.5">
+            <span class="text-slate-500 font-bold uppercase tracking-wider">Email Address:</span>
+            <span class="font-mono text-slate-300 font-medium lowercase select-all">${attendeeRecordObj.email}</span>
+          </div>
+          <div class="flex items-center justify-between border-b border-slate-800/60 pb-1.5">
+            <span class="text-slate-500 font-bold uppercase tracking-wider">Institution Profile:</span>
+            <span class="font-extrabold text-slate-200 uppercase">${attendeeRecordObj.college}</span>
+          </div>
+          <div class="flex items-center justify-between border-b border-slate-800/60 pb-1.5">
+            <span class="text-slate-500 font-bold uppercase tracking-wider">Branch & Cohort:</span>
+            <span class="font-bold text-slate-300 uppercase">${attendeeRecordObj.branch} <span class="text-slate-500">[Year ${attendeeRecordObj.year}]</span></span>
+          </div>
+          <div class="flex items-center justify-between border-b border-slate-800/60 pb-1.5">
+            <span class="text-slate-500 font-bold uppercase tracking-wider">Theme Domain Track:</span>
+            <span class="font-black text-purple-400 uppercase tracking-wide">${attendeeRecordObj.domainSelection || "NOT SELECTED"}</span>
+          </div>
+          <div class="flex items-center justify-between border-b border-slate-800/60 pb-1.5">
+            <span class="text-slate-500 font-bold uppercase tracking-wider">Housing Accomodation:</span>
+            <span class="font-black px-2 py-0.5 rounded text-[10px] ${attendeeRecordObj.accommodation === 'YES' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-800 text-slate-400'}">${attendeeRecordObj.accommodation || "NO"}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-slate-500 font-bold uppercase tracking-wider">Arrival Checked In:</span>
+            <span class="font-mono font-bold text-emerald-400">${attendeeRecordObj.checkInTime}</span>
+          </div>
+        </div>
+        
+        <button onclick="dismissGateVerificationOverlay()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs py-3 rounded-xl transition cursor-pointer">Dismiss Dashboard</button>
+      </div>`;
+  } else {
+    let alertClass = "bg-rose-500/10 border-rose-500/30 text-rose-400";
+    if (errorType === "DUPLICATE") alertClass = "bg-amber-500/10 border-amber-500/30 text-amber-400";
+
+    container.innerHTML = `
+      <div class="space-y-4 animate-fade-in">
+        <div class="${alertClass} border p-5 rounded-xl text-center space-y-2">
+          <div class="text-lg font-black uppercase tracking-wider">ACCESS DENIED SYSTEM FAULT</div>
+          <p class="text-xs font-semibold text-slate-300 leading-relaxed">${serverMessage}</p>
+        </div>
+        <button onclick="dismissGateVerificationOverlay()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs py-3 rounded-xl transition cursor-pointer">Dismiss Dashboard</button>
+      </div>`;
+  }
+}
+
+function dismissGateVerificationOverlay() {
+  document.getElementById('statusVerificationOverlay').classList.add('hidden');
+}
+
+function appendScanHistoryRow(regIdValue, resultStatusText, colorTextClass = "text-slate-400") {
+  const logContainer = document.getElementById('sessionScanHistoryLogsContainer');
+  const timestampText = new Date().toLocaleTimeString();
+  
+  const targetRowHtml = `
+    <div class="flex items-center justify-between border-b border-slate-800/40 py-2 text-[11px] font-medium last:border-none animate-slide-down">
+      <div class="space-y-0.5">
+        <div class="font-mono font-bold text-slate-300 select-all uppercase">${regIdValue || "MANUAL FIELD INPUT"}</div>
+        <div class="text-[9px] text-slate-500 font-mono">${timestampText}</div>
       </div>
-      <p class="${row.style} text-[11px] leading-tight font-medium">${row.msg}</p>
-    </div>`).join('');
+      <span class="font-mono font-black ${colorTextClass} tracking-wide text-right">${resultStatusText}</span>
+    </div>`;
+    
+  logContainer.insertAdjacentHTML('afterbegin', targetRowHtml);
 }
