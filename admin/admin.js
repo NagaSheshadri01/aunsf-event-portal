@@ -5,7 +5,6 @@ let dashboardViewMode = "registration";
 let expandedCollegesMap = {};           
 let activeDayFilterScope = null;        
 
-// Live local state storage for the central configurations deck
 let systemConfigState = {
   regularPrice: 1000,
   earlyBirdPrice: 500,
@@ -280,10 +279,12 @@ function renderTargetedDataGrid() {
 
   let filteredRecordDataset = masterRecordsCache.filter(row => {
     if (activeDayFilterScope && row.dateOfReg !== activeDayFilterScope) return false;
-    if (dashboardViewMode === "revenue") {
+    
+    // CRITICAL REQ RECTIFICATION: Exclusively allow Approved or Checked-in records inside Attendance deck
+    if (dashboardViewMode === "attendance") {
+      if (row.status !== "Approved" && row.status !== "Checked-in") return false;
+    } else if (dashboardViewMode === "revenue") {
       return row.status === "Approved" || row.status === "Checked-in";
-    } else if (dashboardViewMode === "attendance") {
-      if (row.status === "Rejected" || row.status === "Duplicate") return false;
     } else {
       if (statusFilterValue !== "All") {
         if (statusFilterValue === "Approved" && row.status !== "Approved" && row.status !== "Checked-in") return false;
@@ -374,12 +375,20 @@ function renderTargetedDataGrid() {
           </div>`;
       }
 
-      var financialColumnRenderText = user.status === "Pending" ? `<span class="text-slate-500 italic font-mono select-none">Unearned</span>` : `<span class="font-mono font-bold text-slate-200 whitespace-nowrap">₹${user.amountReceived || 0}</span>`;
+      var financialColumnRenderText = (user.status === "Pending" || user.amountReceived === "") ? `<span class="text-slate-500 italic font-mono select-none">Unearned</span>` : `<span class="font-mono font-bold text-slate-200 whitespace-nowrap">₹${user.amountReceived || 0}</span>`;
       
-      // Dynamic on-the-fly preview tracking calculation value configuration
       let baseTicketRate = (birdValue === "YES") ? systemConfigState.earlyBirdPrice : systemConfigState.regularPrice;
       let hostAccomodationRate = (user.accommodation === "YES") ? systemConfigState.accommodationPrice : 0;
       let finalLiveSuggestedPrice = baseTicketRate + hostAccomodationRate;
+
+      // FIXED ACTION CONTAINER CONDITIONAL LOOKUP
+      let actionColumnHtml = `<span class="text-slate-500 text-[10px] font-mono select-none">Processed</span>`;
+      if (user.status.toLowerCase() === "pending") {
+        actionColumnHtml = `
+          <button onclick="dispatchApprovalActionWithLockedPrice(${user.rowNumber}, ${finalLiveSuggestedPrice})" class="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[10px] uppercase tracking-wider px-2.5 py-1.5 rounded-lg shadow cursor-pointer transition">Approve (₹${finalLiveSuggestedPrice})</button>
+          <button onclick="dispatchAdminOperationAction(${user.rowNumber}, 'reject')" class="bg-rose-600/10 hover:bg-rose-600 text-rose-400 text-[10px] font-bold px-2.5 py-1.5 rounded-lg cursor-pointer transition">Reject</button>
+        `;
+      }
 
       return `
         <tr class="hover:bg-slate-950/20 transition duration-100 border-b border-slate-700/20 text-xs whitespace-nowrap">
@@ -405,12 +414,7 @@ function renderTargetedDataGrid() {
           <td class="px-4 py-3.5 text-center bg-slate-900/10">${financialColumnRenderText}</td>
           
           <td class="px-4 py-3.5 text-center"><span class="px-2.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${badgeStyleClass}">${user.status}</span></td>
-          <td class="px-4 py-3.5 text-right pr-6">
-            ${user.status === 'Pending' ? `
-              <button onclick="dispatchApprovalActionWithLockedPrice(${user.rowNumber}, ${finalLiveSuggestedPrice})" class="bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[10px] uppercase tracking-wider px-2.5 py-1.5 rounded-lg shadow cursor-pointer transition">Approve (₹${finalLiveSuggestedPrice})</button>
-              <button onclick="dispatchAdminOperationAction(${user.rowNumber}, 'reject')" class="bg-rose-600/10 hover:bg-rose-600 text-rose-400 text-[10px] font-bold px-2.5 py-1.5 rounded-lg cursor-pointer transition">Reject</button>
-            ` : `<span class="text-slate-500 text-[10px] font-mono select-none">Processed</span>`}
-          </td>
+          <td class="px-4 py-3.5 text-right pr-6">${actionColumnHtml}</td>
         </tr>`;
     }).join('');
 
