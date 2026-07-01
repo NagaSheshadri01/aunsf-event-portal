@@ -2,6 +2,7 @@ const BACKEND_API_URL = "https://script.google.com/macros/s/AKfycbxV5iYwbY8xBoMn
 
 let masterRecordsCache = [];
 let dashboardViewMode = "registration"; 
+let activeAttendanceDomainTab = "Blue Economy"; // Default isolated lookover tab scope
 let expandedCollegesMap = {};           
 let activeDayFilterScope = null;        
 
@@ -26,14 +27,15 @@ window.onload = () => {
   }
 
   document.getElementById('refreshBtn').addEventListener('click', () => synchronizeCloudLedger(false));
-  document.getElementById('exportCsvBtn').addEventListener('click', processCsvExportTask);
+  document.getElementById('exportCsvBtn').addEventListener('click', () => processCsvExportTask("GLOBAL_ALL"));
   document.getElementById('clearFiltersBtn').addEventListener('click', clearAllActiveFilters);
   document.getElementById('btnResetScopeBypass').addEventListener('click', clearDayTimelineScopeBypass);
   document.getElementById('saveConfigBtn').addEventListener('click', dispatchConfigUpdateToServer);
 
   setupModeButtonsViewRoutingControlEngine();
+  setupAttendanceDomainTabEngine();
 
-  ['searchInput', 'filterStatus', 'filterCollege', 'filterBranch', 'filterYear'].forEach(id => {
+  ['searchInput', 'filterStatus', 'filterCollege', 'filterBranch', 'filterYear', 'filterDomain'].forEach(id => {
     document.getElementById(id).addEventListener('change', renderTargetedDataGrid);
     document.getElementById(id).addEventListener('input', renderTargetedDataGrid);
   });
@@ -128,14 +130,43 @@ function setupModeButtonsViewRoutingControlEngine() {
   });
 }
 
+// SETUP DOMAIN SELECTION BUTTON TUNNELS FOR ATTENDANCE OVERLAY SCOPE
+function setupAttendanceDomainTabEngine() {
+  const buttonsMap = {
+    'btnDomainBlueEco': 'Blue Economy',
+    'btnDomainMindspace': 'Mindspace',
+    'btnDomainArtsCulture': 'Arts & Culture'
+  };
+
+  Object.keys(buttonsMap).forEach(id => {
+    document.getElementById(id).addEventListener('click', (e) => {
+      Object.keys(buttonsMap).forEach(bId => {
+        document.getElementById(bId).className = "bg-slate-800 text-slate-400 hover:bg-slate-700 text-xs font-bold px-3 py-2 rounded-xl transition cursor-pointer";
+      });
+      e.target.className = "bg-purple-600 text-white text-xs font-bold px-3 py-2 rounded-xl shadow transition cursor-pointer";
+      activeAttendanceDomainTab = buttonsMap[id];
+      renderTargetedDataGrid();
+    });
+  });
+
+  // Connect isolated export event bindings cleanly
+  document.getElementById('exportCsvBlueEcoBtn').addEventListener('click', () => processCsvExportTask("Blue Economy"));
+  document.getElementById('exportCsvMindspaceBtn').addEventListener('click', () => processCsvExportTask("Mindspace"));
+  document.getElementById('exportCsvArtsCultureBtn').addEventListener('click', () => processCsvExportTask("Arts & Culture"));
+}
+
 function handleStructuralViewLayoutAlterators() {
   const sidebar = document.getElementById('sidebarArea');
   const metricsGrid = document.getElementById('metricsCountersGrid');
   const toolbarContainer = document.getElementById('filterToolbarContainer');
+  const attendanceTabsBlock = document.getElementById('attendanceDomainTabsContainer');
+
   if (dashboardViewMode === "revenue") {
-    sidebar.classList.remove('hidden'); metricsGrid.classList.add('hidden'); toolbarContainer.classList.add('hidden'); 
+    sidebar.classList.remove('hidden'); metricsGrid.classList.add('hidden'); toolbarContainer.classList.add('hidden'); attendanceTabsBlock.classList.add('hidden');
+  } else if (dashboardViewMode === "attendance") {
+    sidebar.classList.add('hidden'); metricsGrid.classList.remove('hidden'); toolbarContainer.classList.remove('hidden'); attendanceTabsBlock.classList.remove('hidden');
   } else {
-    sidebar.classList.add('hidden'); metricsGrid.classList.remove('hidden'); toolbarContainer.classList.remove('hidden');
+    sidebar.classList.add('hidden'); metricsGrid.classList.remove('hidden'); toolbarContainer.classList.remove('hidden'); attendanceTabsBlock.classList.add('hidden');
   }
   renderTargetedDataGrid();
 }
@@ -145,7 +176,8 @@ function clearDayTimelineScopeBypass() { activeDayFilterScope = null; renderTarg
 function clearAllActiveFilters() {
   document.getElementById('searchInput').value = ""; document.getElementById('filterStatus').value = "All";
   document.getElementById('filterCollege').value = "All"; document.getElementById('filterBranch').value = "All";
-  document.getElementById('filterYear').value = "All"; activeDayFilterScope = null; renderTargetedDataGrid();
+  document.getElementById('filterYear').value = "All"; document.getElementById('filterDomain').value = "All";
+  activeDayFilterScope = null; renderTargetedDataGrid();
 }
 
 function buildDynamicAlphaSortedFilterDropdowns() {
@@ -197,7 +229,6 @@ function calculateSystemMetricsAndDistributions() {
   let colCountMap = {}, brCountMap = {}, yrCountMap = {}, trendTotalMap = {}, trendApprovedMap = {};
   let colRevMap = {}, brRevMap = {}, yrRevMap = {};
   
-  // NEW REVENUE DRILLDOWN SUB-TIER DATA STRUCTURE TRACKER MAPS
   let nestedBranchRevPool = {}; 
   let nestedYearRevPool = {};   
 
@@ -218,7 +249,6 @@ function calculateSystemMetricsAndDistributions() {
         brRevMap[cleanBrKey] = (brRevMap[cleanBrKey] || 0) + userInstanceCost;
         yrRevMap[cleanYrKey] = (yrRevMap[cleanYrKey] || 0) + userInstanceCost;
 
-        // Populate complex multi-dimensional mapping bounds for explicit branch-to-year revenue calculations
         if (!nestedBranchRevPool[cleanColKey]) nestedBranchRevPool[cleanColKey] = {};
         nestedBranchRevPool[cleanColKey][cleanBrKey] = (nestedBranchRevPool[cleanColKey][cleanBrKey] || 0) + userInstanceCost;
 
@@ -240,12 +270,8 @@ function calculateSystemMetricsAndDistributions() {
     if (isExpanded && nestedBranchRevPool[colKey]) {
       drilldownHtml = `<div class="bg-slate-900/60 p-2 mt-1 rounded-xl border border-slate-700/40 space-y-1.5 text-[10px] text-slate-400">`;
       Object.keys(nestedBranchRevPool[colKey]).sort().forEach(branchKey => {
-        
-        // REQ RECTIFICATION MATCH FIXED: Evaluates distinct sub-tier metrics loop chains cleanly
         let branchTotalSum = nestedBranchRevPool[colKey][branchKey] || 0;
         drilldownHtml += `<div class="font-bold border-b border-slate-800/60 pb-0.5 text-slate-300 flex justify-between"><span>📌 ${branchKey}</span><span class="text-purple-400">₹${branchTotalSum.toLocaleString('en-IN')}</span></div>`;
-        
-        // Map individual cohort levels cleanly underneath
         ["YEAR 1", "YEAR 2", "YEAR 3", "YEAR 4"].forEach(yText => {
           const compKey = `${colKey}_${branchKey}_${yText}`;
           if (nestedYearRevPool[compKey]) {
@@ -286,6 +312,7 @@ function renderTargetedDataGrid() {
   const collegeFilterValue = document.getElementById('filterCollege').value;
   const branchFilterValue = document.getElementById('filterBranch').value;
   const yearFilterValue = document.getElementById('filterYear').value;
+  const domainFilterValue = document.getElementById('filterDomain').value;
 
   if (activeDayFilterScope) {
     bannerText.innerText = `Displaying profiles filed on date segment: ${activeDayFilterScope}`;
@@ -295,9 +322,10 @@ function renderTargetedDataGrid() {
   let filteredRecordDataset = masterRecordsCache.filter(row => {
     if (activeDayFilterScope && row.dateOfReg !== activeDayFilterScope) return false;
     
-    // CRITICAL REQUIREMENT COMPILER FILTER: Strict isolate block bounds so only approved items show in attendance tab
+    // ATTENDANCE SUB-TAB ISOLATION MECHANISM RULE: Filters lookover view strictly by chosen button
     if (dashboardViewMode === "attendance") {
       if (row.status !== "Approved" && row.status !== "Checked-in") return false;
+      if (row.domainSelection !== activeAttendanceDomainTab) return false;
     } else if (dashboardViewMode === "revenue") {
       return row.status === "Approved" || row.status === "Checked-in";
     } else {
@@ -309,6 +337,7 @@ function renderTargetedDataGrid() {
     if (collegeFilterValue !== "All" && (row.college || '').trim().toUpperCase() !== collegeFilterValue) return false;
     if (branchFilterValue !== "All" && (row.branch || '').trim().toUpperCase() !== branchFilterValue) return false;
     if (yearFilterValue !== "All" && row.year.toString() !== yearFilterValue.toString()) return false;
+    if (domainFilterValue !== "All" && row.domainSelection !== domainFilterValue) return false;
     
     if (queryValue) {
       const rowSearchString = [row.regId, row.fullName, row.email, row.phone, row.college, row.branch, row.utr].join(" ").toLowerCase();
@@ -392,7 +421,6 @@ function renderTargetedDataGrid() {
 
       var financialColumnRenderText = (user.status === "Pending" || user.amountReceived === "") ? `<span class="text-slate-500 italic font-mono select-none">Unearned</span>` : `<span class="font-mono font-bold text-slate-200 whitespace-nowrap">₹${user.amountReceived || 0}</span>`;
       
-      // FIXED METRIC EVALUATION ACCELERATOR BLOCK: Guaranteed evaluation logic fallback
       let baseTicketRate = (birdValue === "YES" || (birdValue === "NULL" && systemConfigState.earlyBirdModeActive)) ? systemConfigState.earlyBirdPrice : systemConfigState.regularPrice;
       let hostAccomodationRate = (user.accommodation === "YES") ? systemConfigState.accommodationPrice : 0;
       let finalLiveSuggestedPrice = baseTicketRate + hostAccomodationRate;
@@ -446,7 +474,7 @@ function renderTargetedDataGrid() {
       </tr>`;
 
     if (filteredRecordDataset.length === 0) {
-      bodyBlock.innerHTML = `<tr><td colspan="7" class="text-center py-12 text-slate-500 italic font-bold">No valid entries identified.</td></tr>`;
+      bodyBlock.innerHTML = `<tr><td colspan="7" class="text-center py-12 text-slate-500 italic font-bold">No valid entries found for this specific domain scope.</td></tr>`;
       return;
     }
 
@@ -534,21 +562,67 @@ async function dispatchAdminOperationAction(rowNumber, actionName) {
   } catch (error) { alert("API execution error: " + error.toString()); }
 }
 
-function processCsvExportTask() {
-  if (masterRecordsCache.length === 0) return;
-  const csvHeadersRow = ["Timestamp", "Registration ID", "Full Name", "Email Address", "Phone Number", "Gender", "College", "Branch", "Year", "Domain Selection", "Accommodation", "UPI Transaction ID", "Screenshot Drive Link", "Status", "Check-In Timestamp", "Amount Received", "Date of Registration", "Early Bird Status"];
-  const sanitizedStringRowsArray = masterRecordsCache.map(r => [
-    `"${(r.timestamp || '')}"`, `"${(r.regId || '')}"`, `"${(r.fullName || '')}"`, `"${(r.email || '')}"`,
-    `"${(r.phone || '')}"`, `"${(r.gender || '')}"`, `"${(r.college || '')}"`, `"${(r.branch || '')}"`, `"${(r.year || '')}"`,
-    `"${(r.domainSelection || '')}"`, `"${(r.accommodation || '')}"`, `"${(r.utr || '')}"`, `"${(r.screenshot || '')}"`,
-    `"${(r.status || '')}"`, `"${(r.checkInTime || '')}"`, r.amountReceived, `"${r.dateOfReg}"`, `"${r.earlyBird}"`
+// FULL SANITIZATION UPGRADE: Escapes all string metadata explicitly to stop spreadsheet hash corruptions
+function processCsvExportTask(filterDomainScopeName = "GLOBAL_ALL") {
+  let targetExportList = masterRecordsCache;
+  let compiledFileName = "AUNSF_Structural_Event_Ledger_2026.csv";
+
+  if (filterDomainScopeName !== "GLOBAL_ALL") {
+    // Isolated check-in dataset filter
+    targetExportList = masterRecordsCache.filter(r => 
+      (r.status === "Approved" || r.status === "Checked-in") && r.domainSelection === filterDomainScopeName
+    );
+    compiledFileName = `AUNSF_Attendance_${filterDomainScopeName.replace(/\s+/g, '_')}_2026.csv`;
+  }
+
+  if (targetExportList.length === 0) {
+    alert("Export Cancelled: No rows matched your selected scope filters.");
+    return;
+  }
+
+  const csvHeadersRow = [
+    "Timestamp", "Registration ID", "Full Name", "Email Address", "Phone Number", 
+    "Gender", "College", "Branch", "Year", "Domain Selection", 
+    "Accommodation", "UPI Transaction ID", "Screenshot Drive Link", "Status", 
+    "Check-In Timestamp", "Amount Received", "Date of Registration", "Early Bird Status"
+  ];
+
+  // Helper formula to strip carriage breaks and safely wrap inside strict column quotes
+  const escapeCellString = (val) => {
+    if (val === undefined || val === null || val === "null") return '""';
+    let cleanStr = val.toString().replace(/"/g, '""'); // Double quote escape format rules
+    return `"${cleanStr}"`;
+  };
+
+  const sanitizedStringRowsArray = targetExportList.map(r => [
+    escapeCellString(r.timestamp),
+    escapeCellString(r.regId),
+    escapeCellString(r.fullName),
+    escapeCellString(r.email),
+    escapeCellString(r.phone),
+    escapeCellString(r.gender),
+    escapeCellString(r.college),
+    escapeCellString(r.branch),
+    escapeCellString(r.year),
+    escapeCellString(r.domainSelection),
+    escapeCellString(r.accommodation),
+    escapeCellString(r.utr),
+    escapeCellString(r.screenshot),
+    escapeCellString(r.status),
+    escapeCellString(r.checkInTime),
+    parseInt(r.amountReceived, 10) || 0, // Numbers pass explicitly raw without hash padding
+    escapeCellString(r.dateOfReg),
+    escapeCellString(r.earlyBird)
   ].join(","));
-  const fullCsvStringContent = csvHeadersRow.join(",") + "\n" + sanitizedStringRowsArray.join("\n");
+
+  const fullCsvStringContent = "\uFEFF" + csvHeadersRow.join(",") + "\n" + sanitizedStringRowsArray.join("\n");
   const binaryMemoryBlob = new Blob([fullCsvStringContent], { type: 'text/csv;charset=utf-8;' });
   const temporaryBlobDownloadUrlPointer = URL.createObjectURL(binaryMemoryBlob);
   const anchorDownloadLink = document.createElement("a");
+  
   anchorDownloadLink.setAttribute("href", temporaryBlobDownloadUrlPointer);
-  anchorDownloadLink.setAttribute("download", "AUNSF_Structural_Event_Ledger_2026.csv");
+  anchorDownloadLink.setAttribute("download", compiledFileName);
   document.body.appendChild(anchorDownloadLink);
-  anchorDownloadLink.click(); document.body.removeChild(anchorDownloadLink);
+  anchorDownloadLink.click(); 
+  document.body.removeChild(anchorDownloadLink);
 }
