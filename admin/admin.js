@@ -196,7 +196,10 @@ function calculateSystemMetricsAndDistributions() {
 
   let colCountMap = {}, brCountMap = {}, yrCountMap = {}, trendTotalMap = {}, trendApprovedMap = {};
   let colRevMap = {}, brRevMap = {}, yrRevMap = {};
-  let treeStructure = {};
+  
+  // NEW REVENUE DRILLDOWN SUB-TIER DATA STRUCTURE TRACKER MAPS
+  let nestedBranchRevPool = {}; 
+  let nestedYearRevPool = {};   
 
   masterRecordsCache.forEach(r => {
     if (r.status !== 'Duplicate') {
@@ -215,9 +218,12 @@ function calculateSystemMetricsAndDistributions() {
         brRevMap[cleanBrKey] = (brRevMap[cleanBrKey] || 0) + userInstanceCost;
         yrRevMap[cleanYrKey] = (yrRevMap[cleanYrKey] || 0) + userInstanceCost;
 
-        if (!treeStructure[cleanColKey]) treeStructure[cleanColKey] = {};
-        if (!treeStructure[cleanColKey][cleanBrKey]) treeStructure[cleanColKey][cleanBrKey] = {};
-        treeStructure[cleanColKey][cleanBrKey][cleanYrKey] = (treeStructure[cleanColKey][cleanBrKey][cleanYrKey] || 0) + 1;
+        // Populate complex multi-dimensional mapping bounds for explicit branch-to-year revenue calculations
+        if (!nestedBranchRevPool[cleanColKey]) nestedBranchRevPool[cleanColKey] = {};
+        nestedBranchRevPool[cleanColKey][cleanBrKey] = (nestedBranchRevPool[cleanColKey][cleanBrKey] || 0) + userInstanceCost;
+
+        const compositeYearKey = `${cleanColKey}_${cleanBrKey}_${cleanYrKey}`;
+        nestedYearRevPool[compositeYearKey] = (nestedYearRevPool[compositeYearKey] || 0) + userInstanceCost;
       }
 
       let dateKey = r.dateOfReg || "N/A";
@@ -228,14 +234,23 @@ function calculateSystemMetricsAndDistributions() {
     }
   });
 
-  collegeArea.innerHTML = Object.keys(colCountMap).sort().map(colKey => {
+  collegeArea.innerHTML = Object.keys(colRevMap).sort().map(colKey => {
     const isExpanded = !!expandedCollegesMap[colKey];
     let drilldownHtml = "";
-    if (isExpanded && treeStructure[colKey]) {
-      drilldownHtml = `<div class="bg-slate-900/60 p-2 mt-1 rounded-lg border border-slate-700/40 space-y-1 text-[10px] text-slate-400">`;
-      Object.keys(treeStructure[colKey]).sort().forEach(branchKey => {
-        Object.keys(treeStructure[colKey][branchKey]).sort().forEach(yearKey => {
-          drilldownHtml += `<div class="flex items-center justify-between border-b border-slate-800/40 py-0.5"><span>${branchKey} (${yearKey.replace("YEAR ","Y")})</span><span class="text-purple-400 font-bold">Cleared</span></div>`;
+    if (isExpanded && nestedBranchRevPool[colKey]) {
+      drilldownHtml = `<div class="bg-slate-900/60 p-2 mt-1 rounded-xl border border-slate-700/40 space-y-1.5 text-[10px] text-slate-400">`;
+      Object.keys(nestedBranchRevPool[colKey]).sort().forEach(branchKey => {
+        
+        // REQ RECTIFICATION MATCH FIXED: Evaluates distinct sub-tier metrics loop chains cleanly
+        let branchTotalSum = nestedBranchRevPool[colKey][branchKey] || 0;
+        drilldownHtml += `<div class="font-bold border-b border-slate-800/60 pb-0.5 text-slate-300 flex justify-between"><span>📌 ${branchKey}</span><span class="text-purple-400">₹${branchTotalSum.toLocaleString('en-IN')}</span></div>`;
+        
+        // Map individual cohort levels cleanly underneath
+        ["YEAR 1", "YEAR 2", "YEAR 3", "YEAR 4"].forEach(yText => {
+          const compKey = `${colKey}_${branchKey}_${yText}`;
+          if (nestedYearRevPool[compKey]) {
+            drilldownHtml += `<div class="flex items-center justify-between pl-3 opacity-80 text-[9px]"><span>${yText.toLowerCase()}</span><span class="text-emerald-400 font-medium">₹${nestedYearRevPool[compKey].toLocaleString('en-IN')}</span></div>`;
+          }
         });
       });
       drilldownHtml += `</div>`;
@@ -243,7 +258,7 @@ function calculateSystemMetricsAndDistributions() {
     return `
       <div class="border-b border-slate-700/30 py-1.5 last:border-none">
         <div onclick="toggleCollegeDrilldownView('${colKey}')" class="flex items-center justify-between gap-2 cursor-pointer hover:bg-slate-700/30 p-1 rounded transition">
-          <span class="truncate max-w-[110px] font-bold text-slate-300 inline-flex items-center gap-1">${isExpanded ? '▼' : '▶'} ${colKey}</span>
+          <span class="truncate max-w-[130px] font-bold text-slate-300 inline-flex items-center gap-1">${isExpanded ? '▼' : '▶'} ${colKey}</span>
           <span class="text-blue-400 font-bold">₹${colRevMap[colKey].toLocaleString('en-IN')}</span>
         </div>
         ${drilldownHtml}
@@ -280,7 +295,7 @@ function renderTargetedDataGrid() {
   let filteredRecordDataset = masterRecordsCache.filter(row => {
     if (activeDayFilterScope && row.dateOfReg !== activeDayFilterScope) return false;
     
-    // EXCLUSIVE REQUIREMENT COMPILER FILTER: Strict isolate block bounds
+    // CRITICAL REQUIREMENT COMPILER FILTER: Strict isolate block bounds so only approved items show in attendance tab
     if (dashboardViewMode === "attendance") {
       if (row.status !== "Approved" && row.status !== "Checked-in") return false;
     } else if (dashboardViewMode === "revenue") {
@@ -364,9 +379,9 @@ function renderTargetedDataGrid() {
       var birdBtnHtml = "";
       
       if (birdValue === "YES") {
-        birdBtnHtml = `<button onclick="dispatchEarlyBirdToggleState(${user.rowNumber}, 'NO')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] px-3 py-1 rounded transition whitespace-nowrap cursor-pointer shadow-sm">YES</button>`;
+        birdBtnHtml = `<button onclick="dispatchEarlyBirdToggleState(${user.rowNumber}, 'NO', '${user.accommodation}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[10px] px-3 py-1 rounded transition whitespace-nowrap cursor-pointer shadow-sm">YES</button>`;
       } else if (birdValue === "NO") {
-        birdBtnHtml = `<button onclick="dispatchEarlyBirdToggleState(${user.rowNumber}, 'YES')" class="bg-slate-700 hover:bg-slate-600 text-slate-300 font-extrabold text-[10px] px-3 py-1 rounded transition whitespace-nowrap cursor-pointer shadow-sm">NO</button>`;
+        birdBtnHtml = `<button onclick="dispatchEarlyBirdToggleState(${user.rowNumber}, 'YES', '${user.accommodation}')" class="bg-slate-700 hover:bg-slate-600 text-slate-300 font-extrabold text-[10px] px-3 py-1 rounded transition whitespace-nowrap cursor-pointer shadow-sm">NO</button>`;
       } else {
         birdBtnHtml = `
           <div class="inline-flex gap-1 bg-slate-950/40 p-1 rounded-lg border border-slate-700/40">
@@ -377,7 +392,8 @@ function renderTargetedDataGrid() {
 
       var financialColumnRenderText = (user.status === "Pending" || user.amountReceived === "") ? `<span class="text-slate-500 italic font-mono select-none">Unearned</span>` : `<span class="font-mono font-bold text-slate-200 whitespace-nowrap">₹${user.amountReceived || 0}</span>`;
       
-      let baseTicketRate = (birdValue === "YES") ? systemConfigState.earlyBirdPrice : systemConfigState.regularPrice;
+      // FIXED METRIC EVALUATION ACCELERATOR BLOCK: Guaranteed evaluation logic fallback
+      let baseTicketRate = (birdValue === "YES" || (birdValue === "NULL" && systemConfigState.earlyBirdModeActive)) ? systemConfigState.earlyBirdPrice : systemConfigState.regularPrice;
       let hostAccomodationRate = (user.accommodation === "YES") ? systemConfigState.accommodationPrice : 0;
       let finalLiveSuggestedPrice = baseTicketRate + hostAccomodationRate;
 
