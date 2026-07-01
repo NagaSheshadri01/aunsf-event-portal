@@ -2,7 +2,7 @@ const BACKEND_API_URL = "https://script.google.com/macros/s/AKfycbxV5iYwbY8xBoMn
 
 let masterRecordsCache = [];
 let dashboardViewMode = "registration"; 
-let activeAttendanceDomainTab = "Blue Economy"; // Default isolated lookover tab scope
+let activeAttendanceDomainTab = "Blue Economy"; 
 let expandedCollegesMap = {};           
 let activeDayFilterScope = null;        
 
@@ -222,10 +222,11 @@ function calculateSystemMetricsAndDistributions() {
   const collegeArea = document.getElementById('distributionCollegeArea');
   const branchArea = document.getElementById('distributionBranchArea');
   const yearArea = document.getElementById('distributionYearArea');
+  const domainArea = document.getElementById('distributionDomainArea'); // Live Sidebar Node
   const trendsArea = document.getElementById('distributionTrendsArea');
 
-  let colCountMap = {}, brCountMap = {}, yrCountMap = {}, trendTotalMap = {}, trendApprovedMap = {};
-  let colRevMap = {}, brRevMap = {}, yrRevMap = {};
+  let colCountMap = {}, brCountMap = {}, yrCountMap = {}, domCountMap = {}, trendTotalMap = {}, trendApprovedMap = {};
+  let colRevMap = {}, brRevMap = {}, yrRevMap = {}, domRevMap = {};
   
   let nestedBranchRevPool = {}; 
   let nestedYearRevPool = {};   
@@ -235,6 +236,7 @@ function calculateSystemMetricsAndDistributions() {
       const cleanColKey = (r.college || 'N/A').trim().toUpperCase();
       const cleanBrKey = (r.branch || 'N/A').trim().toUpperCase();
       const cleanYrKey = "YEAR " + (r.year || 'N/A').toString().trim().toUpperCase();
+      const cleanDomKey = (r.domainSelection || 'UNASSIGNED').trim();
       const isApprovedUser = (r.status === 'Approved' || r.status === 'Checked-in');
       const userInstanceCost = (r.amountReceived || 0);
 
@@ -242,10 +244,12 @@ function calculateSystemMetricsAndDistributions() {
         colCountMap[cleanColKey] = (colCountMap[cleanColKey] || 0) + 1;
         brCountMap[cleanBrKey] = (brCountMap[cleanBrKey] || 0) + 1;
         yrCountMap[cleanYrKey] = (yrCountMap[cleanYrKey] || 0) + 1;
+        domCountMap[cleanDomKey] = (domCountMap[cleanDomKey] || 0) + 1;
 
         colRevMap[cleanColKey] = (colRevMap[cleanColKey] || 0) + userInstanceCost;
         brRevMap[cleanBrKey] = (brRevMap[cleanBrKey] || 0) + userInstanceCost;
         yrRevMap[cleanYrKey] = (yrRevMap[cleanYrKey] || 0) + userInstanceCost;
+        domRevMap[cleanDomKey] = (domRevMap[cleanDomKey] || 0) + userInstanceCost;
 
         if (!nestedBranchRevPool[cleanColKey]) nestedBranchRevPool[cleanColKey] = {};
         nestedBranchRevPool[cleanColKey][cleanBrKey] = (nestedBranchRevPool[cleanColKey][cleanBrKey] || 0) + userInstanceCost;
@@ -291,6 +295,9 @@ function calculateSystemMetricsAndDistributions() {
 
   branchArea.innerHTML = Object.keys(brCountMap).sort().map(k => `<div class="flex items-center justify-between py-1 border-b border-slate-700/30 gap-2"><span class="truncate max-w-[120px] font-bold text-slate-300">${k}</span><span class="text-purple-400 font-bold">₹${brRevMap[k].toLocaleString('en-IN')}</span></div>`).join('') || '<p class="text-slate-500 italic">No approved data</p>';
   yearArea.innerHTML = Object.keys(yrCountMap).sort().map(k => `<div class="flex items-center justify-between py-1 border-b border-slate-700/30 gap-2"><span class="font-bold text-slate-300">${k}</span><span class="text-emerald-400 font-bold">₹${yrRevMap[k].toLocaleString('en-IN')}</span></div>`).join('') || '<p class="text-slate-500 italic">No approved data</p>';
+  
+  // FINAL ADDITION LOOKUP: Dynamic Domain Track Metric Distribution Panel
+  domainArea.innerHTML = Object.keys(domRevMap).sort().map(k => `<div class="flex items-center justify-between py-1 border-b border-slate-700/30 gap-2"><span class="font-bold text-slate-300 uppercase truncate max-w-[140px]">${k}</span><span class="text-purple-400 font-bold">₹${domRevMap[k].toLocaleString('en-IN')}</span></div>`).join('') || '<p class="text-slate-500 italic">No assigned domains</p>';
 
   trendsArea.innerHTML = Object.keys(trendTotalMap).map(k => `
     <div onclick="filterByRegistrationDateTimelineScope('${k}')" class="flex items-center justify-between py-1.5 px-1 border-b border-slate-700/30 hover:bg-slate-700/40 rounded cursor-pointer transition">
@@ -320,7 +327,6 @@ function renderTargetedDataGrid() {
   let filteredRecordDataset = masterRecordsCache.filter(row => {
     if (activeDayFilterScope && row.dateOfReg !== activeDayFilterScope) return false;
     
-    // TAB ENGINE ROUTING FILTER RULES
     if (dashboardViewMode === "attendance") {
       if (row.status !== "Approved" && row.status !== "Checked-in") return false;
       if (row.domainSelection !== activeAttendanceDomainTab) return false;
@@ -560,7 +566,6 @@ async function dispatchAdminOperationAction(rowNumber, actionName) {
   } catch (error) { alert("API execution error: " + error.toString()); }
 }
 
-// FIXED EXPORT CORE COMPILER: Maps full 18 columns matching your exact spreadsheet configuration rows
 function processCsvExportTask(filterDomainScopeName = "GLOBAL_ALL") {
   let targetExportList = masterRecordsCache;
   let compiledFileName = "AUNSF_Master_Event_Ledger_2026.csv";
@@ -577,7 +582,6 @@ function processCsvExportTask(filterDomainScopeName = "GLOBAL_ALL") {
     return;
   }
 
-  // Exact 18 columns in chronological master layout orientation sequence order bounds
   const csvHeadersRow = [
     "Timestamp", "Registration ID", "Full Name", "Email Address", "Phone Number", 
     "Gender", "College", "Branch", "Year", "Domain Selection", 
