@@ -32,7 +32,7 @@ function initializeCameraScanningStream() {
       terminateCameraStreamBypass();
       dispatchCheckInTicketPayload(decodedText.trim());
     },
-    (errorMessage) => { /* Silent background framing log capture boundaries */ }
+    (errorMessage) => { /* Silent background lens tracking log captures */ }
   ).then(() => {
     hardwareCameraScanStreamIsActive = true;
   }).catch(err => {
@@ -99,34 +99,59 @@ async function dispatchCheckInTicketPayload(ticketRegistrationIdToken) {
     feedbackDeck.classList.remove('hidden');
 
     if (outcomeResult.status === "success") {
-      renderGateVerificationResponseUI(true, outcomeResult.message, outcomeResult.record);
+      renderGateVerificationResponseUI("SUCCESS", outcomeResult.message, outcomeResult.record);
       appendScanHistoryRow(ticketRegistrationIdToken, "✅ ADMITTED", "text-emerald-400");
     } else if (outcomeResult.status === "duplicate") {
-      renderGateVerificationResponseUI(false, outcomeResult.message, null, "DUPLICATE");
+      // REDIRECT PASSTHROUGH UPGRADE: Fetches data profiles anyway to display despite duplicate state status
+      renderGateVerificationResponseUI("DUPLICATE", outcomeResult.message, outcomeResult.record);
       appendScanHistoryRow(ticketRegistrationIdToken, "⚠️ DUPLICATE PASS", "text-amber-400");
     } else {
-      renderGateVerificationResponseUI(false, outcomeResult.message, null, "REJECTED");
+      renderGateVerificationResponseUI("REJECTED", outcomeResult.message, null);
       appendScanHistoryRow(ticketRegistrationIdToken, "❌ DENIED", "text-rose-400");
     }
   } catch (error) {
     loaderBanner.classList.add('hidden');
     feedbackDeck.classList.remove('hidden');
-    renderGateVerificationResponseUI(false, "Transmission Breakdown: Connection timeout or primary ledger synchronizer offline.", null, "ERROR");
+    renderGateVerificationResponseUI("ERROR", "Transmission Breakdown: Connection timeout or primary ledger synchronization offline.", null);
     appendScanHistoryRow(ticketRegistrationIdToken, "💥 NETWORK FAULT", "text-rose-500");
   }
 }
 
-function renderGateVerificationResponseUI(isSuccess, serverMessage, attendeeRecordObj = null, errorType = "") {
+function renderGateVerificationResponseUI(scanStatusType, serverMessage, attendeeRecordObj = null) {
   const container = document.getElementById('feedbackContentContainer');
   
-  if (isSuccess && attendeeRecordObj) {
+  if ((scanStatusType === "SUCCESS" || scanStatusType === "DUPLICATE") && attendeeRecordObj) {
+    const cohortLabels = { "1": "Fresher (Year 1)", "2": "Sophomore (Year 2)", "3": "Junior (Year 3)", "4": "Senior (Year 4)" };
+    const cleanCohortLabel = cohortLabels[attendeeRecordObj.year] || "Year " + attendeeRecordObj.year;
+
+    // Determine state card styles dynamically based on scan iteration types
+    let headerAlertMarkup = `
+      <div class="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-xl text-center">
+        <div class="text-xs font-black text-emerald-400 uppercase tracking-widest">ACCESS ACCREDITED</div>
+        <div class="text-lg font-black text-white mt-1">${serverMessage}</div>
+      </div>`;
+
+    if (scanStatusType === "DUPLICATE") {
+      headerAlertMarkup = `
+        <div class="bg-rose-600 border-2 border-rose-500 p-5 rounded-xl text-center shadow-lg animate-pulse">
+          <div class="text-2xl font-black text-white uppercase tracking-tight">⚠️ DUPLICATE SCAN DETECTED</div>
+          <div class="text-xs font-bold text-rose-100 mt-1 uppercase tracking-wide">Accreditation entry badge has already been scanned previously!</div>
+        </div>`;
+    }
+
     container.innerHTML = `
-      <div class="space-y-4 animate-fade-in">
-        <div class="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-xl text-center">
-          <div class="text-xs font-black text-emerald-400 uppercase tracking-widest">ACCESS ACCREDITED</div>
-          <div class="text-lg font-black text-white mt-1">${serverMessage}</div>
+      <div class="space-y-4 animate-fade-in text-slate-200">
+        
+        <!-- Status Notification Box Header Block -->
+        ${headerAlertMarkup}
+
+        <!-- UPGRADE TRACK COMPONENT: Prominent massive Domain Track notification block display layout -->
+        <div class="bg-purple-900/40 border-2 border-purple-500/60 p-4 rounded-xl text-center shadow-inner">
+          <div class="text-[10px] font-black text-purple-300 uppercase tracking-widest">ASSIGNED THEME TRACK</div>
+          <div class="text-2xl font-black text-white uppercase tracking-wide mt-0.5">${attendeeRecordObj.domainSelection || "UNASSIGNED REGISTRATION"}</div>
         </div>
         
+        <!-- Core Profile Metadata Breakdown Card Deck -->
         <div class="bg-slate-950/60 border border-slate-800 p-4 rounded-xl space-y-3 text-xs">
           <div class="flex items-center justify-between border-b border-slate-800/60 pb-1.5">
             <span class="text-slate-500 font-bold uppercase tracking-wider">Ticket Pass ID:</span>
@@ -146,11 +171,7 @@ function renderGateVerificationResponseUI(isSuccess, serverMessage, attendeeReco
           </div>
           <div class="flex items-center justify-between border-b border-slate-800/60 pb-1.5">
             <span class="text-slate-500 font-bold uppercase tracking-wider">Branch & Cohort:</span>
-            <span class="font-bold text-slate-300 uppercase">${attendeeRecordObj.branch} <span class="text-slate-500">[Year ${attendeeRecordObj.year}]</span></span>
-          </div>
-          <div class="flex items-center justify-between border-b border-slate-800/60 pb-1.5">
-            <span class="text-slate-500 font-bold uppercase tracking-wider">Theme Domain Track:</span>
-            <span class="font-black text-purple-400 uppercase tracking-wide">${attendeeRecordObj.domainSelection || "NOT SELECTED"}</span>
+            <span class="font-bold text-slate-300 uppercase">${attendeeRecordObj.branch} <span class="text-slate-500">[${cleanCohortLabel}]</span></span>
           </div>
           <div class="flex items-center justify-between border-b border-slate-800/60 pb-1.5">
             <span class="text-slate-500 font-bold uppercase tracking-wider">Housing Accommodation:</span>
@@ -165,12 +186,9 @@ function renderGateVerificationResponseUI(isSuccess, serverMessage, attendeeReco
         <button onclick="dismissGateVerificationOverlay()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs py-3 rounded-xl transition cursor-pointer">Dismiss Dashboard</button>
       </div>`;
   } else {
-    let alertClass = "bg-rose-500/10 border-rose-500/30 text-rose-400";
-    if (errorType === "DUPLICATE") alertClass = "bg-amber-500/10 border-amber-500/30 text-amber-400";
-
     container.innerHTML = `
       <div class="space-y-4 animate-fade-in">
-        <div class="${alertClass} border p-5 rounded-xl text-center space-y-2">
+        <div class="bg-rose-500/10 border border-rose-500/30 text-rose-400 p-5 rounded-xl text-center space-y-2">
           <div class="text-lg font-black uppercase tracking-wider">ACCESS DENIED</div>
           <p class="text-xs font-semibold text-slate-300 leading-relaxed">${serverMessage}</p>
         </div>
