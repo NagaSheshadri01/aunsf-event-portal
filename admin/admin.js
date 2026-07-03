@@ -348,7 +348,7 @@ function renderTargetedDataGrid() {
     return true;
   });
 
-  const cohortLabels = { "1": "Fresher", "2": "Sophomore", "3": "Junior", "4": "Senior" };
+  const cohortLabels = { "1": "FRESHER", "2": "SOPHOMORE", "3": "JUNIOR", "4": "SENIOR" };
 
   if (dashboardViewMode === "revenue") {
     headBlock.innerHTML = `
@@ -374,7 +374,7 @@ function renderTargetedDataGrid() {
         <td class="px-4 py-3.5 font-mono font-bold text-slate-200 select-all">${user.regId}</td>
         <td class="px-4 py-3.5"><div class="font-bold text-slate-100">${user.fullName}</div><div class="text-[10px] text-slate-400 font-mono mt-0.5">${user.email}</div></td>
         <td class="px-4 py-3.5 font-bold text-slate-300 uppercase">${user.college} <span class="text-slate-500 font-normal text-xs">[${user.branch}]</span></td>
-        <td class="px-4 py-3.5 text-center font-bold">${cohortLabels[user.year] || "Year " + user.year}</td>
+        <td class="px-4 py-3.5 text-center font-bold">${cohortLabels[user.year] || "UNKNOWN"} [Y${user.year}]</td>
         <td class="px-4 py-3.5 font-semibold text-slate-300">${user.domainSelection || "N/A"}</td>
         <td class="px-4 py-3.5 text-center font-bold ${user.accommodation === 'YES' ? 'text-emerald-400' : 'text-slate-500'}">${user.accommodation || "NO"}</td>
         <td class="px-4 py-3.5 font-mono text-[11px] text-slate-300">${user.utr}</td>
@@ -443,11 +443,15 @@ function renderTargetedDataGrid() {
           <td class="px-4 py-3.5">
             <div class="font-bold text-slate-100 max-w-[130px] truncate" title="${user.fullName}">${user.fullName}</div>
             <div class="text-[10px] text-slate-400 font-mono mt-0.5 max-w-[130px] truncate">${user.email}</div>
-            <div class="text-[9px] text-blue-400 font-bold tracking-wider uppercase mt-0.5">${user.gender || "UNKNOWN"}</div>
+            <div class="text-[9px] text-blue-400 font-bold tracking-wider uppercase mt-0.5">
+              ${user.gender || "UNKNOWN"} <span class="text-white font-black font-mono ml-2 select-all">${user.phone || ""}</span>
+            </div>
           </td>
           <td class="px-4 py-3.5">
             <div class="uppercase font-bold text-slate-300 max-w-[130px] truncate" title="${user.college}">${user.college}</div>
-            <div class="uppercase text-[10px] text-slate-400 mt-0.5 max-w-[130px] truncate">${user.branch} <span class="text-slate-500 font-normal">[${cohortLabels[user.year] || "Y" + user.year}]</span></div>
+            <div class="uppercase text-[10px] text-slate-400 mt-0.5 max-w-[130px] truncate">
+              ${user.branch} <span class="text-slate-500 font-normal">[${cohortLabels[user.year] || "UNKNOWN"} - <span class="text-white font-black">Y${user.year}</span>]</span>
+            </div>
           </td>
           <td class="px-4 py-3.5 font-semibold text-slate-300">${user.domainSelection || "Unassigned"}</td>
           <td class="px-4 py-3.5 text-center font-extrabold ${user.accommodation === 'YES' ? 'text-emerald-400' : 'text-slate-600'}">${user.accommodation || "NO"}</td>
@@ -491,7 +495,7 @@ function renderTargetedDataGrid() {
           <td class="px-4 py-3.5 font-mono font-bold text-slate-300 whitespace-nowrap">${user.regId}</td>
           <td class="px-4 py-3.5"><div class="font-bold text-slate-100 max-w-[200px] truncate" title="${user.fullName}">${user.fullName}</div><div class="text-[10px] text-slate-400 font-mono mt-0.5 whitespace-nowrap">${user.phone}</div></td>
           <td class="px-4 py-3.5"><div class="uppercase font-bold text-slate-300 max-w-[200px] truncate" title="${user.college}">${user.college}</div><div class="uppercase text-[10px] text-slate-400 mt-0.5 max-w-[200px] truncate" title="${user.branch}">${user.branch}</div></td>
-          <td class="px-4 py-3.5 font-black text-center whitespace-nowrap">${cohortLabels[user.year] || "Year " + user.year}</td>
+          <td class="px-4 py-3.5 font-black text-center whitespace-nowrap">${cohortLabels[user.year] || "UNKNOWN"} [Y${user.year}]</td>
           <td class="px-4 py-3.5 text-center font-medium text-slate-400 whitespace-nowrap">${user.dateOfReg}</td>
           <td class="px-4 py-3.5 whitespace-nowrap"><span class="px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap ${badgeStyleClass}">${isCheckedIn ? 'Checked In' : 'Unchecked'}</span></td>
           <td class="px-4 py-3.5 text-right pr-6 whitespace-nowrap">
