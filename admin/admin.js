@@ -101,7 +101,7 @@ async function dispatchConfigUpdateToServer() {
   try {
     const response = await fetch(BACKEND_API_URL, {
       method: 'POST',
-      body: JSON.stringify(payload)
+      body: JSON.stringify({ action: "updateConfig", ...payload })
     });
     const result = await response.json();
     if (result.status === "success") {
@@ -109,7 +109,7 @@ async function dispatchConfigUpdateToServer() {
       synchronizeCloudLedger(false);
     }
   } catch (error) {
-    alert("Configuration transmission fault: " + error.toString());
+    alert("Configuration fault: " + error.toString());
   } finally {
     saveBtn.disabled = false;
     saveBtn.innerText = "💾 Save Configurations";
@@ -133,7 +133,7 @@ function setupModeButtonsViewRoutingControlEngine() {
 function setupAttendanceDomainTabEngine() {
   const buttonsMap = {
     'btnDomainBlueEco': 'Blue Economy',
-    'btnDomainMindspace': 'Human Behaviour & Civic Innovation',
+    'btnDomainMindspace': 'Human Behaviour & Civic Innovation', // Renamed Target Tab Selector
     'btnDomainArtsCulture': 'Arts & Culture'
   };
 
@@ -147,6 +147,10 @@ function setupAttendanceDomainTabEngine() {
       renderTargetedDataGrid();
     });
   });
+
+  document.getElementById('exportCsvBlueEcoBtn').addEventListener('click', () => processCsvExportTask("Blue Economy"));
+  document.getElementById('exportCsvMindspaceBtn').addEventListener('click', () => processCsvExportTask("Human Behaviour & Civic Innovation"));
+  document.getElementById('exportCsvArtsCultureBtn').addEventListener('click', () => processCsvExportTask("Arts & Culture"));
 }
 
 function handleStructuralViewLayoutAlterators() {
@@ -439,6 +443,7 @@ function renderTargetedDataGrid() {
       let foodColorClass = user.foodPreference === "VEG" ? "text-emerald-400" : "text-amber-500";
       let referredBySnippet = user.referredBy ? ` | <span class="text-purple-300 font-medium">Ref: ${user.referredBy}</span>` : "";
 
+      // BUGFIX: Display the pulled 'user.idCardNumber' property cleanly under the college department row block layout
       return `
         <tr class="hover:bg-slate-950/20 transition duration-100 border-b border-slate-700/20 text-xs whitespace-nowrap">
           <td class="px-4 py-3.5">${trID}</td>
