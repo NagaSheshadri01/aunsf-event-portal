@@ -330,6 +330,7 @@ function renderTargetedDataGrid() {
   });
 
   const cohortLabels = { "1": "FRESHER", "2": "SOPHOMORE", "3": "JUNIOR", "4": "SENIOR" };
+  const shortCohortCodes = { "1": "Y1", "2": "Y2", "3": "Y3", "4": "Y4" };
 
   if (dashboardViewMode === "revenue") {
     headBlock.innerHTML = `<tr class="bg-slate-900/40 text-slate-400 text-[11px] font-bold"><th class="px-4 py-3">Ticket ID</th><th class="px-4 py-3">Paying Participant</th><th class="px-4 py-3">Institution</th><th class="px-4 py-3 text-center">Year</th><th class="px-4 py-3">Domain Track</th><th class="px-4 py-3 text-center">Accom.</th><th class="px-4 py-3">Transaction UTR</th><th class="px-4 py-3 text-right pr-6">Amount</th></tr>`;
@@ -363,10 +364,15 @@ function renderTargetedDataGrid() {
         <button onclick="dispatchAdminOperationAction(${user.rowNumber}, 'reject')" class="bg-rose-600/20 text-rose-400 text-[10px] font-bold px-2 py-1 rounded-lg cursor-pointer transition ml-1">Reject</button>
       ` : `<span class="text-slate-500 text-[10px] font-mono select-none">Processed</span>`;
 
+      // 🎯 UI CHANGE (2nd PIC): Email address successfully stacked inside the sub-container block directly below the phone number element
       return `
         <tr class="hover:bg-slate-950/20 border-b border-slate-800/40 text-xs">
           <td class="px-4 py-3">${trID}</td>
-          <td class="px-4 py-3"><div class="font-bold text-slate-100">${user.fullName}</div><div class="text-[10px] text-blue-400 font-mono font-bold">${user.phone} <span class="text-slate-500">[${user.foodPreference}]</span></div></td>
+          <td class="px-4 py-3">
+            <div class="font-bold text-slate-100">${user.fullName}</div>
+            <div class="text-[10px] text-blue-400 font-mono font-bold">${user.phone} <span class="text-slate-500">[${user.foodPreference}]</span></div>
+            <div class="text-[10px] text-slate-400 font-mono mt-0.5">${user.email}</div>
+          </td>
           <td class="px-4 py-3"><div class="font-bold uppercase text-slate-300 max-w-[130px] truncate">${user.college}</div><div class="text-[10px] text-slate-400">Y${user.year} - ${user.branch}</div><div class="text-[9px] text-slate-500 font-mono font-bold">ID: <span class="select-all text-slate-300">${user.idCardNumber || 'N/A'}</span></div></td>
           <td class="px-4 py-3 truncate max-w-[130px] font-semibold">${user.domainSelection}</td>
           <td class="px-4 py-3 text-center font-extrabold ${user.accommodation === 'YES' ? 'text-emerald-400' : 'text-slate-600'}">${user.accommodation}</td>
@@ -383,16 +389,20 @@ function renderTargetedDataGrid() {
     headBlock.innerHTML = `<tr class="bg-slate-900/40 text-slate-400 text-[11px] font-bold"><th class="px-4 py-3">Ticket ID</th><th class="px-4 py-3">Participant Details</th><th class="px-4 py-3">Institution & Department</th><th class="px-4 py-3 text-center">Cohort Year</th><th class="px-4 py-3 text-center">Date</th><th class="px-4 py-3">Flow Status</th><th class="px-4 py-3 text-right pr-6">Gate Operations</th></tr>`;
     bodyBlock.innerHTML = filteredRecordDataset.map(user => {
       let isCheckedIn = (user.status === "Checked-in");
+      
+      // 🎯 UI CHANGE (1st PIC): Cohort code descriptor text appended inside parentheses [e.g., SOPHOMORE (Y2)]
+      let rawLabelName = cohortLabels[user.year] || "UNKNOWN";
+      let shortCodeTag = shortCohortCodes[user.year] ? ` (${shortCohortCodes[user.year]})` : "";
+      let fullyCompiledCohortDisplayValue = rawLabelName + shortCodeTag;
+
       return `
         <tr class="hover:bg-slate-950/20 border-b border-slate-800/40 text-xs ${isCheckedIn ? 'bg-blue-950/10' : ''}">
           <td class="px-4 py-3 font-mono font-bold text-slate-300">${user.regId}</td>
           <td class="px-4 py-3"><div class="font-bold text-slate-100">${user.fullName}</div><div class="text-[10px] text-slate-500 font-mono">${user.phone}</div></td>
           <td class="px-4 py-3"><div class="uppercase font-bold text-slate-300">${user.college}</div><div class="text-[10px] text-slate-400">${user.branch}</div></td>
-          <td class="px-4 py-3 text-center font-bold">${cohortLabels[user.year] || "UNKNOWN"}</td>
+          <td class="px-4 py-3 text-center font-bold text-slate-300">${fullyCompiledCohortDisplayValue}</td>
           <td class="px-4 py-3 text-center text-slate-500">${user.dateOfReg}</td>
           <td class="px-4 py-3"><span class="px-2 py-0.5 rounded text-[9px] font-black uppercase ${isCheckedIn ? 'bg-blue-500/10 text-blue-400' : 'bg-emerald-500/10 text-emerald-400'}">${user.status}</span></td>
-          
-          <!-- FIXED ADMIN ROW ID MANUAL CHECKIN ATTENDANCE INTEGRATION HOOK -->
           <td class="px-4 py-3 text-right pr-6">
             ${!isCheckedIn ? `
               <button onclick="dispatchManualAttendanceCheckIn(${user.rowNumber}, '${user.fullName}')" class="bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] px-2.5 py-1 rounded-lg cursor-pointer transition shadow">Mark Gate Entry</button>
@@ -435,7 +445,6 @@ async function dispatchEarlyBirdToggleState(rowNumber, targetValueString, userAc
 async function dispatchManualAttendanceCheckIn(rowNumber, attendeeName) {
   if (!confirm(`Log manual entry gate confirmation for ${attendeeName}?`)) return;
   try {
-    // PASSES EXPLICIT ROWhUMBER PROPERTY TO BACKEND INSTANT PROCESSING ENGINE
     const response = await fetch(BACKEND_API_URL, {
       method: 'POST',
       body: JSON.stringify({ action: "checkin", rowNumber: parseInt(rowNumber, 10) }) 
