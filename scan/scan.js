@@ -27,16 +27,16 @@ function initializeCameraScanningStream() {
   html5QrCodeScannerInstance = new Html5Qrcode("readerSurfaceBoundary");
   html5QrCodeScannerInstance.start(
     { facingMode: "environment" },
-    { fps: 10, qrbox: { width: 250, height: 250 } },
+    { fps: 15, qrbox: { width: 250, height: 250 } }, // Increased FPS for faster capture
     (decodedText) => {
       terminateCameraStreamBypass();
       dispatchCheckInTicketPayload(decodedText.trim());
     },
-    (errorMessage) => { /* Silent background tracking */ }
+    (errorMessage) => { /* Silent tracking */ }
   ).then(() => {
     hardwareCameraScanStreamIsActive = true;
   }).catch(err => {
-    alert("Camera activation fault: " + err);
+    alert("Camera stream error: " + err);
     terminateCameraStreamBypass();
   });
 }
@@ -98,6 +98,7 @@ async function dispatchCheckInTicketPayload(ticketRegistrationIdToken) {
     loaderBanner.classList.add('hidden');
     feedbackDeck.classList.remove('hidden');
 
+    // ⚡ INSTANT EVALUATION: SUCCESS and DUPLICATE routes both display full layout payloads immediately
     if (outcomeResult.status === "success") {
       renderGateVerificationResponseUI("SUCCESS", outcomeResult.message, outcomeResult.record);
       appendScanHistoryRow(ticketRegistrationIdToken, "✅ ADMITTED", "text-emerald-400");
@@ -111,8 +112,8 @@ async function dispatchCheckInTicketPayload(ticketRegistrationIdToken) {
   } catch (error) {
     loaderBanner.classList.add('hidden');
     feedbackDeck.classList.remove('hidden');
-    renderGateVerificationResponseUI("ERROR", "Connection timeout or primary ledger synchronization offline.", null);
-    appendScanHistoryRow(ticketRegistrationIdToken, "💥 NETWORK FAULT", "text-rose-500");
+    renderGateVerificationResponseUI("ERROR", "Connection error: Ledger sync request timed out.", null);
+    appendScanHistoryRow(ticketRegistrationIdToken, "💥 TIMEOUT FAULT", "text-rose-500");
   }
 }
 
@@ -123,7 +124,7 @@ function renderGateVerificationResponseUI(scanStatusType, serverMessage, attende
     const cohortLabels = { "1": "Fresher (Year 1)", "2": "Sophomore (Year 2)", "3": "Junior (Year 3)", "4": "Senior (Year 4)" };
     const cleanCohortLabel = cohortLabels[attendeeRecordObj.year] || "Year " + attendeeRecordObj.year;
 
-    // High contrast layout headers based on state outcomes
+    // Direct structural update logic to show custom headers while preserving all attendee details
     let headerAlertMarkup = `
       <div class="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-xl text-center">
         <div class="text-xs font-black text-emerald-400 uppercase tracking-widest">ACCESS ACCREDITED</div>
@@ -132,13 +133,12 @@ function renderGateVerificationResponseUI(scanStatusType, serverMessage, attende
 
     if (scanStatusType === "DUPLICATE") {
       headerAlertMarkup = `
-        <div class="bg-gradient-to-b from-rose-700 to-rose-900 border-2 border-rose-500 p-5 rounded-2xl text-center shadow-xl animate-pulse">
-          <div class="text-2xl font-black text-white uppercase tracking-tight">⚠️ DUPLICATE SCAN DETECTED</div>
-          <div class="text-xs font-bold text-rose-200 mt-1 uppercase tracking-wide">This ticket pass has already been scanned at gates!</div>
+        <div class="bg-gradient-to-b from-amber-600 to-amber-800 border-2 border-amber-400 p-5 rounded-2xl text-center shadow-xl animate-pulse">
+          <div class="text-2xl font-black text-white uppercase tracking-tight">⚠️ DUPLICATE scan DETECTED</div>
+          <div class="text-xs font-bold text-amber-100 mt-1 uppercase tracking-wide">Warning: This pass ticket has already been processed!</div>
         </div>`;
     }
 
-    // Dynamic track color styling tags
     let domainContainerStyle = "bg-purple-900/40 border-purple-500/60 text-purple-300";
     if (attendeeRecordObj.domainSelection.indexOf("Blue Economy") > -1) {
       domainContainerStyle = "bg-blue-900/40 border-blue-500/60 text-blue-300";
@@ -153,7 +153,6 @@ function renderGateVerificationResponseUI(scanStatusType, serverMessage, attende
         <span class="font-extrabold text-purple-400 uppercase">${attendeeRecordObj.referredBy}</span>
       </div>` : "";
 
-    // Hyperlinked Aadhaar Document verification field mapping logic
     let hasAccom = attendeeRecordObj.accommodation === 'YES';
     let docVerificationRowHtml = "";
     if (hasAccom) {
@@ -169,16 +168,16 @@ function renderGateVerificationResponseUI(scanStatusType, serverMessage, attende
     container.innerHTML = `
       <div class="space-y-4 animate-fade-in text-slate-200">
         
-        <!-- Verification Header Alert -->
+        <!-- Adaptive Dynamic Status Notification Header -->
         ${headerAlertMarkup}
 
-        <!-- High Visibility Theme Track Title -->
+        <!-- High Visibility Theme Track Banner -->
         <div class="${domainContainerStyle} border-2 p-4 rounded-xl text-center shadow-inner">
           <div class="text-[10px] font-black uppercase tracking-widest opacity-80">ASSIGNED EVENT THEME TRACK</div>
           <div class="text-xl font-black text-white uppercase tracking-wide mt-0.5">${attendeeRecordObj.domainSelection || "UNASSIGNED"}</div>
         </div>
         
-        <!-- Master Metadata Deck Layout -->
+        <!-- Complete Profile Card Deck Layout (Maintains Full Info Visibility) -->
         <div class="bg-slate-950/60 border border-slate-800 p-4 rounded-xl space-y-3 text-xs">
           <div class="flex items-center justify-between border-b border-slate-800/60 pb-1.5">
             <span class="text-slate-500 font-bold uppercase tracking-wider">Ticket Pass ID:</span>
@@ -211,8 +210,8 @@ function renderGateVerificationResponseUI(scanStatusType, serverMessage, attende
           </div>
           ${docVerificationRowHtml}
           <div class="flex items-center justify-between">
-            <span class="text-slate-500 font-bold uppercase tracking-wider">Original Arrival Check In:</span>
-            <span class="font-mono font-black text-emerald-400">${attendeeRecordObj.checkInTime || "Just Logged"}</span>
+            <span class="text-slate-500 font-bold uppercase tracking-wider">Gate Check In Logged Time:</span>
+            <span class="font-mono font-black text-amber-400">${attendeeRecordObj.checkInTime || "Just Logged"}</span>
           </div>
         </div>
         
