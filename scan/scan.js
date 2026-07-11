@@ -2,6 +2,7 @@ const BACKEND_API_URL = "https://script.google.com/macros/s/AKfycbxV5iYwbY8xBoMn
 
 let html5QrCodeScannerInstance = null;
 let hardwareCameraScanStreamIsActive = false;
+let isProcessingNetworkPayloadBypass = false; // Lifecycle state lock to block infinite re-scanning loops
 
 window.onload = () => {
   document.getElementById('startScannerBtn').addEventListener('click', toggleHardwareLensScanningPipeline);
@@ -17,6 +18,8 @@ function toggleHardwareLensScanningPipeline() {
 }
 
 function initializeCameraScanningStream() {
+  if (isProcessingNetworkPayloadBypass) return; // Prevent activation if overlay alert is active
+  
   const triggerBtn = document.getElementById('startScannerBtn');
   triggerBtn.innerText = "🛑 Stop QR Scanner";
   triggerBtn.className = "w-full bg-rose-600 hover:bg-rose-500 text-white font-bold text-sm py-4 px-6 rounded-xl shadow-lg transition tracking-wide cursor-pointer flex items-center justify-center gap-2";
@@ -27,16 +30,20 @@ function initializeCameraScanningStream() {
   html5QrCodeScannerInstance = new Html5Qrcode("readerSurfaceBoundary");
   html5QrCodeScannerInstance.start(
     { facingMode: "environment" },
-    { fps: 15, qrbox: { width: 250, height: 250 } }, // Increased FPS for faster capture
+    { fps: 10, qrbox: { width: 250, height: 250 } }, 
     (decodedText) => {
+      // CRITICAL SPEED FIX: Lock the thread immediately to stop multiple parallel scans of the same ticket
+      if (isProcessingNetworkPayloadBypass) return;
+      isProcessingNetworkPayloadBypass = true; 
+      
       terminateCameraStreamBypass();
       dispatchCheckInTicketPayload(decodedText.trim());
     },
-    (errorMessage) => { /* Silent tracking */ }
+    (errorMessage) => { /* Suppress stream noise logging for speed efficiency */ }
   ).then(() => {
     hardwareCameraScanStreamIsActive = true;
   }).catch(err => {
-    alert("Camera stream error: " + err);
+    alert("Camera initialization fault: " + err);
     terminateCameraStreamBypass();
   });
 }
@@ -47,7 +54,8 @@ function terminateCameraStreamBypass() {
       html5QrCodeScannerInstance = null;
       resetCameraUILayoutElements();
     }).catch(err => {
-      console.error(err);
+      console.error("Camera stop error: ", err);
+      html5QrCodeScannerInstance = null;
       resetCameraUILayoutElements();
     });
   } else {
@@ -66,12 +74,15 @@ function resetCameraUILayoutElements() {
 }
 
 function executeManualInputIdCheckIn() {
+  if (isProcessingNetworkPayloadBypass) return;
+  
   const inputField = document.getElementById('manualRegIdInput');
   const targetIdString = inputField.value.trim().toUpperCase();
   if (!targetIdString) {
     alert("Please enter a valid Registration Ticket ID.");
     return;
   }
+  isProcessingNetworkPayloadBypass = true;
   inputField.value = "";
   dispatchCheckInTicketPayload(targetIdString);
 }
@@ -85,7 +96,7 @@ async function dispatchCheckInTicketPayload(ticketRegistrationIdToken) {
   loaderBanner.classList.remove('hidden');
   feedbackDeck.classList.add('hidden');
 
-  appendScanHistoryRow(ticketRegistrationIdToken, "Verifying credentials...⌛");
+  appendScanHistoryRow(ticketRegistrationIdToken, "Verifying... ⏳");
 
   try {
     const response = await fetch(BACKEND_API_URL, {
@@ -98,7 +109,6 @@ async function dispatchCheckInTicketPayload(ticketRegistrationIdToken) {
     loaderBanner.classList.add('hidden');
     feedbackDeck.classList.remove('hidden');
 
-    // ⚡ INSTANT EVALUATION: SUCCESS and DUPLICATE routes both display full layout payloads immediately
     if (outcomeResult.status === "success") {
       renderGateVerificationResponseUI("SUCCESS", outcomeResult.message, outcomeResult.record);
       appendScanHistoryRow(ticketRegistrationIdToken, "✅ ADMITTED", "text-emerald-400");
@@ -112,8 +122,8 @@ async function dispatchCheckInTicketPayload(ticketRegistrationIdToken) {
   } catch (error) {
     loaderBanner.classList.add('hidden');
     feedbackDeck.classList.remove('hidden');
-    renderGateVerificationResponseUI("ERROR", "Connection error: Ledger sync request timed out.", null);
-    appendScanHistoryRow(ticketRegistrationIdToken, "💥 TIMEOUT FAULT", "text-rose-500");
+    renderGateVerificationResponseUI("ERROR", "Network Latency Fault: Connection timed out.", null);
+    appendScanHistoryRow(ticketRegistrationIdToken, "💥 TIMEOUT", "text-rose-500");
   }
 }
 
@@ -124,7 +134,6 @@ function renderGateVerificationResponseUI(scanStatusType, serverMessage, attende
     const cohortLabels = { "1": "Fresher (Year 1)", "2": "Sophomore (Year 2)", "3": "Junior (Year 3)", "4": "Senior (Year 4)" };
     const cleanCohortLabel = cohortLabels[attendeeRecordObj.year] || "Year " + attendeeRecordObj.year;
 
-    // Direct structural update logic to show custom headers while preserving all attendee details
     let headerAlertMarkup = `
       <div class="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-xl text-center">
         <div class="text-xs font-black text-emerald-400 uppercase tracking-widest">ACCESS ACCREDITED</div>
@@ -134,8 +143,8 @@ function renderGateVerificationResponseUI(scanStatusType, serverMessage, attende
     if (scanStatusType === "DUPLICATE") {
       headerAlertMarkup = `
         <div class="bg-gradient-to-b from-amber-600 to-amber-800 border-2 border-amber-400 p-5 rounded-2xl text-center shadow-xl animate-pulse">
-          <div class="text-2xl font-black text-white uppercase tracking-tight">⚠️ DUPLICATE scan DETECTED</div>
-          <div class="text-xs font-bold text-amber-100 mt-1 uppercase tracking-wide">Warning: This pass ticket has already been processed!</div>
+          <div class="text-2xl font-black text-white uppercase tracking-tight">⚠️ DUPLICATE SCAN DETECTED</div>
+          <div class="text-xs font-bold text-amber-100 mt-1 uppercase tracking-wide">Warning: entry card has already been checked-in!</div>
         </div>`;
     }
 
@@ -168,16 +177,13 @@ function renderGateVerificationResponseUI(scanStatusType, serverMessage, attende
     container.innerHTML = `
       <div class="space-y-4 animate-fade-in text-slate-200">
         
-        <!-- Adaptive Dynamic Status Notification Header -->
         ${headerAlertMarkup}
 
-        <!-- High Visibility Theme Track Banner -->
         <div class="${domainContainerStyle} border-2 p-4 rounded-xl text-center shadow-inner">
           <div class="text-[10px] font-black uppercase tracking-widest opacity-80">ASSIGNED EVENT THEME TRACK</div>
           <div class="text-xl font-black text-white uppercase tracking-wide mt-0.5">${attendeeRecordObj.domainSelection || "UNASSIGNED"}</div>
         </div>
         
-        <!-- Complete Profile Card Deck Layout (Maintains Full Info Visibility) -->
         <div class="bg-slate-950/60 border border-slate-800 p-4 rounded-xl space-y-3 text-xs">
           <div class="flex items-center justify-between border-b border-slate-800/60 pb-1.5">
             <span class="text-slate-500 font-bold uppercase tracking-wider">Ticket Pass ID:</span>
@@ -215,7 +221,7 @@ function renderGateVerificationResponseUI(scanStatusType, serverMessage, attende
           </div>
         </div>
         
-        <button onclick="dismissGateVerificationOverlay()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs py-3 rounded-xl transition cursor-pointer">Dismiss Dashboard</button>
+        <button onclick="dismissGateVerificationOverlay()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm py-3.5 rounded-xl transition cursor-pointer">Dismiss & Ready Next Scan 🔄</button>
       </div>`;
   } else {
     container.innerHTML = `
@@ -224,17 +230,19 @@ function renderGateVerificationResponseUI(scanStatusType, serverMessage, attende
           <div class="text-lg font-black uppercase tracking-wider">ACCESS DENIED</div>
           <p class="text-xs font-semibold text-slate-300 leading-relaxed">${serverMessage}</p>
         </div>
-        <button onclick="dismissGateVerificationOverlay()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs py-3 rounded-xl transition cursor-pointer">Dismiss Dashboard</button>
+        <button onclick="dismissGateVerificationOverlay()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm py-3.5 rounded-xl transition cursor-pointer">Dismiss & Ready Next Scan 🔄</button>
       </div>`;
   }
 }
 
 function dismissGateVerificationOverlay() {
   document.getElementById('statusVerificationOverlay').classList.add('hidden');
+  isProcessingNetworkPayloadBypass = false; // Release lock flag so another fresh scan can process instantly
 }
 
 function appendScanHistoryRow(regIdValue, resultStatusText, colorTextClass = "text-slate-400") {
   const logContainer = document.getElementById('sessionScanHistoryLogsContainer');
+  if (!logContainer) return;
   const timestampText = new Date().toLocaleTimeString();
   
   const targetRowHtml = `
