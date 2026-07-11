@@ -102,7 +102,6 @@ async function dispatchCheckInTicketPayload(ticketRegistrationIdToken) {
       renderGateVerificationResponseUI("SUCCESS", outcomeResult.message, outcomeResult.record);
       appendScanHistoryRow(ticketRegistrationIdToken, "✅ ADMITTED", "text-emerald-400");
     } else if (outcomeResult.status === "duplicate") {
-      // REDIRECT PASSTHROUGH UPGRADE: Fetches data profiles anyway to display despite duplicate state status
       renderGateVerificationResponseUI("DUPLICATE", outcomeResult.message, outcomeResult.record);
       appendScanHistoryRow(ticketRegistrationIdToken, "⚠️ DUPLICATE PASS", "text-amber-400");
     } else {
@@ -124,7 +123,7 @@ function renderGateVerificationResponseUI(scanStatusType, serverMessage, attende
     const cohortLabels = { "1": "Fresher (Year 1)", "2": "Sophomore (Year 2)", "3": "Junior (Year 3)", "4": "Senior (Year 4)" };
     const cleanCohortLabel = cohortLabels[attendeeRecordObj.year] || "Year " + attendeeRecordObj.year;
 
-    // Determine state card styles dynamically based on scan iteration types
+    // Build adaptive top headers based on scan state types
     let headerAlertMarkup = `
       <div class="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-xl text-center">
         <div class="text-xs font-black text-emerald-400 uppercase tracking-widest">ACCESS ACCREDITED</div>
@@ -133,11 +132,26 @@ function renderGateVerificationResponseUI(scanStatusType, serverMessage, attende
 
     if (scanStatusType === "DUPLICATE") {
       headerAlertMarkup = `
-        <div class="bg-rose-600 border-2 border-rose-500 p-5 rounded-xl text-center shadow-lg animate-pulse">
+        <div class="bg-gradient-to-b from-rose-700 to-rose-900 border-2 border-rose-500 p-5 rounded-2xl text-center shadow-xl animate-pulse">
           <div class="text-2xl font-black text-white uppercase tracking-tight">⚠️ DUPLICATE SCAN DETECTED</div>
-          <div class="text-xs font-bold text-rose-100 mt-1 uppercase tracking-wide">Accreditation entry badge has already been scanned previously!</div>
+          <div class="text-xs font-bold text-rose-200 mt-1 uppercase tracking-wide">Accreditation entry badge has already been scanned previously!</div>
         </div>`;
     }
+
+    // Dynamic coloring configuration assignments tailored to the specific domain selections
+    let domainContainerStyle = "bg-purple-900/40 border-purple-500/60 text-purple-300";
+    if (attendeeRecordObj.domainSelection.indexOf("Blue Economy") > -1) {
+      domainContainerStyle = "bg-blue-900/40 border-blue-500/60 text-blue-300";
+    } else if (attendeeRecordObj.domainSelection.indexOf("Arts") > -1) {
+      domainContainerStyle = "bg-emerald-900/40 border-emerald-500/60 text-emerald-300";
+    }
+
+    let foodColorStyle = attendeeRecordObj.foodPreference === "VEG" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-amber-500/10 text-amber-400 border border-amber-500/20";
+    let referralRowHtml = attendeeRecordObj.referredBy ? `
+      <div class="flex items-center justify-between border-b border-slate-800/60 pb-1.5">
+        <span class="text-slate-500 font-bold uppercase tracking-wider">Referred By:</span>
+        <span class="font-extrabold text-purple-400 uppercase">${attendeeRecordObj.referredBy}</span>
+      </div>` : "";
 
     container.innerHTML = `
       <div class="space-y-4 animate-fade-in text-slate-200">
@@ -145,10 +159,10 @@ function renderGateVerificationResponseUI(scanStatusType, serverMessage, attende
         <!-- Status Notification Box Header Block -->
         ${headerAlertMarkup}
 
-        <!-- UPGRADE TRACK COMPONENT: Prominent massive Domain Track notification block display layout -->
-        <div class="bg-purple-900/40 border-2 border-purple-500/60 p-4 rounded-xl text-center shadow-inner">
-          <div class="text-[10px] font-black text-purple-300 uppercase tracking-widest">ASSIGNED THEME TRACK</div>
-          <div class="text-2xl font-black text-white uppercase tracking-wide mt-0.5">${attendeeRecordObj.domainSelection || "UNASSIGNED REGISTRATION"}</div>
+        <!-- High Visibility Massive Track Banner Display -->
+        <div class="${domainContainerStyle} border-2 p-4 rounded-xl text-center shadow-inner">
+          <div class="text-[10px] font-black uppercase tracking-widest opacity-80">ASSIGNED EVENT THEME THEME TRACK</div>
+          <div class="text-xl font-black text-white uppercase tracking-wide mt-0.5">${attendeeRecordObj.domainSelection || "UNASSIGNED TRACK"}</div>
         </div>
         
         <!-- Core Profile Metadata Breakdown Card Deck -->
@@ -162,10 +176,6 @@ function renderGateVerificationResponseUI(scanStatusType, serverMessage, attende
             <span class="font-extrabold text-slate-200 uppercase">${attendeeRecordObj.fullName}</span>
           </div>
           <div class="flex items-center justify-between border-b border-slate-800/60 pb-1.5">
-            <span class="text-slate-500 font-bold uppercase tracking-wider">Email Address:</span>
-            <span class="font-mono text-slate-300 font-medium lowercase select-all">${attendeeRecordObj.email}</span>
-          </div>
-          <div class="flex items-center justify-between border-b border-slate-800/60 pb-1.5">
             <span class="text-slate-500 font-bold uppercase tracking-wider">Institution Profile:</span>
             <span class="font-extrabold text-slate-200 uppercase">${attendeeRecordObj.college}</span>
           </div>
@@ -174,12 +184,21 @@ function renderGateVerificationResponseUI(scanStatusType, serverMessage, attende
             <span class="font-bold text-slate-300 uppercase">${attendeeRecordObj.branch} <span class="text-slate-500">[${cleanCohortLabel}]</span></span>
           </div>
           <div class="flex items-center justify-between border-b border-slate-800/60 pb-1.5">
+            <span class="text-slate-500 font-bold uppercase tracking-wider">College ID Card Number:</span>
+            <span class="font-mono font-bold text-slate-200 select-all">${attendeeRecordObj.idCardNumber || "N/A"}</span>
+          </div>
+          <div class="flex items-center justify-between border-b border-slate-800/60 pb-1.5">
+            <span class="text-slate-500 font-bold uppercase tracking-wider">Food Preference Catering:</span>
+            <span class="font-black px-2.5 py-0.5 rounded text-[10px] tracking-wide uppercase ${foodColorStyle}">${attendeeRecordObj.foodPreference || "N/A"}</span>
+          </div>
+          ${referralRowHtml}
+          <div class="flex items-center justify-between border-b border-slate-800/60 pb-1.5">
             <span class="text-slate-500 font-bold uppercase tracking-wider">Housing Accommodation:</span>
             <span class="font-black px-2 py-0.5 rounded text-[10px] ${attendeeRecordObj.accommodation === 'YES' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-800 text-slate-400'}">${attendeeRecordObj.accommodation || "NO"}</span>
           </div>
           <div class="flex items-center justify-between">
-            <span class="text-slate-500 font-bold uppercase tracking-wider">Arrival Checked In:</span>
-            <span class="font-mono font-bold text-emerald-400">${attendeeRecordObj.checkInTime}</span>
+            <span class="text-slate-500 font-bold uppercase tracking-wider">Original Arrival Check In:</span>
+            <span class="font-mono font-black text-emerald-400">${attendeeRecordObj.checkInTime || "Just Logged"}</span>
           </div>
         </div>
         

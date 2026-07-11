@@ -2,7 +2,7 @@ const BACKEND_API_URL = "https://script.google.com/macros/s/AKfycbxV5iYwbY8xBoMn
 
 let masterRecordsCache = [];
 let dashboardViewMode = "registration"; 
-let activeAttendanceDomainTab = "Blue Economy"; 
+let activeAttendanceDomainTab = "Human Behaviour & Civic Innovation"; 
 let expandedCollegesMap = {};           
 let activeDayFilterScope = null;        
 
@@ -133,7 +133,7 @@ function setupModeButtonsViewRoutingControlEngine() {
 function setupAttendanceDomainTabEngine() {
   const buttonsMap = {
     'btnDomainBlueEco': 'Blue Economy',
-    'btnDomainMindspace': 'Mindspace',
+    'btnDomainMindspace': 'Human Behaviour & Civic Innovation',
     'btnDomainArtsCulture': 'Arts & Culture'
   };
 
@@ -149,7 +149,7 @@ function setupAttendanceDomainTabEngine() {
   });
 
   document.getElementById('exportCsvBlueEcoBtn').addEventListener('click', () => processCsvExportTask("Blue Economy"));
-  document.getElementById('exportCsvMindspaceBtn').addEventListener('click', () => processCsvExportTask("Mindspace"));
+  document.getElementById('exportCsvMindspaceBtn').addEventListener('click', () => processCsvExportTask("Human Behaviour & Civic Innovation"));
   document.getElementById('exportCsvArtsCultureBtn').addEventListener('click', () => processCsvExportTask("Arts & Culture"));
 }
 
@@ -295,7 +295,7 @@ function calculateSystemMetricsAndDistributions() {
 
   branchArea.innerHTML = Object.keys(brCountMap).sort().map(k => `<div class="flex items-center justify-between py-1 border-b border-slate-700/30 gap-2"><span class="truncate max-w-[120px] font-bold text-slate-300">${k}</span><span class="text-purple-400 font-bold">₹${brRevMap[k].toLocaleString('en-IN')}</span></div>`).join('') || '<p class="text-slate-500 italic">No approved data</p>';
   yearArea.innerHTML = Object.keys(yrCountMap).sort().map(k => `<div class="flex items-center justify-between py-1 border-b border-slate-700/30 gap-2"><span class="font-bold text-slate-300">${k}</span><span class="text-emerald-400 font-bold">₹${yrRevMap[k].toLocaleString('en-IN')}</span></div>`).join('') || '<p class="text-slate-500 italic">No approved data</p>';
-  domainArea.innerHTML = Object.keys(domRevMap).sort().map(k => `<div class="flex items-center justify-between py-1 border-b border-slate-700/30 gap-2"><span class="font-bold text-slate-300 uppercase truncate max-w-[140px]">${k}</span><span class="text-purple-400 font-bold">₹${domRevMap[k].toLocaleString('en-IN')}</span></div>`).join('') || '<p class="text-slate-500 italic">No assigned domains</p>';
+  domainArea.innerHTML = Object.keys(domRevMap).sort().map(k => `<div class="flex items-center justify-between py-1 border-b border-slate-700/30 gap-2"><span class="font-bold text-slate-300 uppercase truncate max-w-[140px] text-[10px]">${k}</span><span class="text-purple-400 font-bold">₹${domRevMap[k].toLocaleString('en-IN')}</span></div>`).join('') || '<p class="text-slate-500 italic">No assigned domains</p>';
 
   trendsArea.innerHTML = Object.keys(trendTotalMap).map(k => `
     <div onclick="filterByRegistrationDateTimelineScope('${k}')" class="flex items-center justify-between py-1.5 px-1 border-b border-slate-700/30 hover:bg-slate-700/40 rounded cursor-pointer transition">
@@ -342,7 +342,10 @@ function renderTargetedDataGrid() {
     if (domainFilterValue !== "All" && row.domainSelection !== domainFilterValue) return false;
     
     if (queryValue) {
-      const rowSearchString = [row.regId, row.fullName, row.email, row.phone, row.college, row.branch, row.utr].join(" ").toLowerCase();
+      const rowSearchString = [
+        row.regId, row.fullName, row.email, row.phone, row.college, row.branch, row.utr,
+        row.referredBy, row.idCardNumber, row.foodPreference
+      ].join(" ").toLowerCase();
       if (!rowSearchString.includes(queryValue)) return false;
     }
     return true;
@@ -375,7 +378,7 @@ function renderTargetedDataGrid() {
         <td class="px-4 py-3.5"><div class="font-bold text-slate-100">${user.fullName}</div><div class="text-[10px] text-slate-400 font-mono mt-0.5">${user.email}</div></td>
         <td class="px-4 py-3.5 font-bold text-slate-300 uppercase">${user.college} <span class="text-slate-500 font-normal text-xs">[${user.branch}]</span></td>
         <td class="px-4 py-3.5 text-center font-bold">${cohortLabels[user.year] || "UNKNOWN"} [Y${user.year}]</td>
-        <td class="px-4 py-3.5 font-semibold text-slate-300">${user.domainSelection || "N/A"}</td>
+        <td class="px-4 py-3.5 font-semibold text-slate-300 max-w-[150px] truncate" title="${user.domainSelection}">${user.domainSelection || "N/A"}</td>
         <td class="px-4 py-3.5 text-center font-bold ${user.accommodation === 'YES' ? 'text-emerald-400' : 'text-slate-500'}">${user.accommodation || "NO"}</td>
         <td class="px-4 py-3.5 font-mono text-[11px] text-slate-300">${user.utr}</td>
         <td class="px-4 py-3.5 font-medium text-slate-400 whitespace-nowrap">${user.dateOfReg}</td>
@@ -390,7 +393,7 @@ function renderTargetedDataGrid() {
         <th class="px-4 py-3.5">College / Branch / Year</th>
         <th class="px-4 py-3.5">Domain Selection</th>
         <th class="px-4 py-3.5 text-center">Accom.</th>
-        <th class="px-4 py-3.5">Transaction UTR / Receipt</th>
+        <th class="px-4 py-3.5">Transaction UTR / Vault Documentation Links</th>
         <th class="px-4 py-3.5 text-center bg-slate-900/20 text-blue-400 font-black">Date of Reg</th>
         <th class="px-4 py-3.5 text-center bg-slate-900/20 text-blue-400 font-black">Early Bird</th>
         <th class="px-4 py-3.5 text-center bg-slate-900/20 text-blue-400 font-black">Payment</th>
@@ -437,6 +440,10 @@ function renderTargetedDataGrid() {
         `;
       }
 
+      // Dynamic sub-labels data compilation checks
+      let foodColorClass = user.foodPreference === "VEG" ? "text-emerald-400" : "text-amber-500";
+      let referredBySnippet = user.referredBy ? ` | <span class="text-purple-300 font-medium">Ref: ${user.referredBy}</span>` : "";
+
       return `
         <tr class="hover:bg-slate-950/20 transition duration-100 border-b border-slate-700/20 text-xs whitespace-nowrap">
           <td class="px-4 py-3.5">${trID}</td>
@@ -445,6 +452,7 @@ function renderTargetedDataGrid() {
             <div class="text-[10px] text-slate-400 font-mono mt-0.5 max-w-[130px] truncate">${user.email}</div>
             <div class="text-[9px] text-blue-400 font-bold tracking-wider uppercase mt-0.5">
               ${user.gender || "UNKNOWN"} <span class="text-white font-black font-mono ml-2 select-all">${user.phone || ""}</span>
+              <span class="${foodColorClass} font-black ml-2">[${user.foodPreference || "N/A"}]</span>${referredBySnippet}
             </div>
           </td>
           <td class="px-4 py-3.5">
@@ -452,12 +460,17 @@ function renderTargetedDataGrid() {
             <div class="uppercase text-[10px] text-slate-400 mt-0.5 max-w-[130px] truncate">
               ${user.branch} <span class="text-slate-500 font-normal">[${cohortLabels[user.year] || "UNKNOWN"} - <span class="text-white font-black">Y${user.year}</span>]</span>
             </div>
+            <div class="text-[10px] text-slate-400 font-mono mt-0.5">ID: <span class="text-slate-200 font-bold">${user.idCardNumber || "N/A"}</span></div>
           </td>
-          <td class="px-4 py-3.5 font-semibold text-slate-300">${user.domainSelection || "Unassigned"}</td>
+          <td class="px-4 py-3.5 font-semibold text-slate-300 max-w-[140px] truncate" title="${user.domainSelection}">${user.domainSelection || "Unassigned"}</td>
           <td class="px-4 py-3.5 text-center font-extrabold ${user.accommodation === 'YES' ? 'text-emerald-400' : 'text-slate-600'}">${user.accommodation || "NO"}</td>
-          <td class="px-4 py-3.5">
-            <div class="font-mono text-[11px] tracking-wide text-slate-300 select-all">${user.utr}</div>
-            <div class="mt-0.5">${user.screenshot && user.screenshot !== "null" ? `<a href="${user.screenshot}" target="_blank" class="text-blue-400 font-bold underline text-[10px]">View Image</a>` : `<span class="text-slate-600 italic select-none text-[10px]">null</span>`}</div>
+          <td class="px-4 py-3.5 space-y-0.5">
+            <div class="font-mono text-[11px] tracking-wide text-slate-300 select-all">UTR: ${user.utr}</div>
+            <div class="flex items-center gap-2 text-[10px] font-bold">
+              ${user.screenshot ? `<a href="${user.screenshot}" target="_blank" class="text-blue-400 hover:text-blue-300 underline">Receipt</a>` : `<span class="text-slate-600 font-normal italic">No Receipt</span>`}
+              ${user.idCardLink ? ` | <a href="${user.idCardLink}" target="_blank" class="text-indigo-400 hover:text-indigo-300 underline">College ID</a>` : ``}
+              ${user.aadhaarLink ? ` | <a href="${user.aadhaarLink}" target="_blank" class="text-teal-400 hover:text-teal-300 underline">Aadhaar</a>` : ``}
+            </div>
           </td>
           
           <td class="px-4 py-3.5 text-center font-bold text-slate-200 bg-slate-900/10">${user.dateOfReg}</td>
@@ -493,7 +506,10 @@ function renderTargetedDataGrid() {
       return `
         <tr class="hover:bg-slate-950/20 transition duration-100 border-b border-slate-700/20 ${isCheckedIn ? 'bg-blue-950/10' : ''}">
           <td class="px-4 py-3.5 font-mono font-bold text-slate-300 whitespace-nowrap">${user.regId}</td>
-          <td class="px-4 py-3.5"><div class="font-bold text-slate-100 max-w-[200px] truncate" title="${user.fullName}">${user.fullName}</div><div class="text-[10px] text-slate-400 font-mono mt-0.5 whitespace-nowrap">${user.phone}</div></td>
+          <td class="px-4 py-3.5">
+            <div class="font-bold text-slate-100 max-w-[200px] truncate" title="${user.fullName}">${user.fullName}</div>
+            <div class="text-[10px] text-slate-400 font-mono mt-0.5 whitespace-nowrap">${user.phone}</div>
+          </td>
           <td class="px-4 py-3.5"><div class="uppercase font-bold text-slate-300 max-w-[200px] truncate" title="${user.college}">${user.college}</div><div class="uppercase text-[10px] text-slate-400 mt-0.5 max-w-[200px] truncate" title="${user.branch}">${user.branch}</div></td>
           <td class="px-4 py-3.5 font-black text-center whitespace-nowrap">${cohortLabels[user.year] || "UNKNOWN"} [Y${user.year}]</td>
           <td class="px-4 py-3.5 text-center font-medium text-slate-400 whitespace-nowrap">${user.dateOfReg}</td>
@@ -590,7 +606,8 @@ function processCsvExportTask(filterDomainScopeName = "GLOBAL_ALL") {
     "Timestamp", "Registration ID", "Full Name", "Email Address", "Phone Number", 
     "Gender", "College", "Branch", "Year", "Domain Selection", 
     "Accommodation", "UPI Transaction ID", "Payment Screenshot Link", "Date of Registration", 
-    "Early Bird Status", "Amount Received", "Status", "Check-In Timestamp"
+    "Early Bird Status", "Amount Received", "Status", "Check-In Timestamp",
+    "Referred By", "Food Preference", "College ID Card Number", "College ID Card Link", "Aadhaar Card Link"
   ];
 
   const escapeCellString = (val, forceTextLiteral = false) => {
@@ -620,7 +637,12 @@ function processCsvExportTask(filterDomainScopeName = "GLOBAL_ALL") {
     escapeCellString(r.earlyBird),   
     r.amountReceived !== "" ? (parseInt(r.amountReceived, 10) || 0) : 0, 
     escapeCellString(r.status),
-    escapeCellString(r.checkInTime)
+    escapeCellString(r.checkInTime),
+    escapeCellString(r.referredBy),
+    escapeCellString(r.foodPreference),
+    escapeCellString(r.idCardNumber, true),
+    escapeCellString(r.idCardLink),
+    escapeCellString(r.aadhaarLink)
   ].join(","));
 
   const fullCsvStringContent = "\uFEFF" + csvHeadersRow.join(",") + "\n" + sanitizedStringRowsArray.join("\n");
