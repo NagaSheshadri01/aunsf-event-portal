@@ -123,7 +123,7 @@ function renderGateVerificationResponseUI(scanStatusType, serverMessage, attende
     const cohortLabels = { "1": "Fresher (Year 1)", "2": "Sophomore (Year 2)", "3": "Junior (Year 3)", "4": "Senior (Year 4)" };
     const cleanCohortLabel = cohortLabels[attendeeRecordObj.year] || "Year " + attendeeRecordObj.year;
 
-    // Build adaptive top headers based on scan state types
+    // Generate adaptive structural alert notification headers
     let headerAlertMarkup = `
       <div class="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-xl text-center">
         <div class="text-xs font-black text-emerald-400 uppercase tracking-widest">ACCESS ACCREDITED</div>
@@ -138,7 +138,7 @@ function renderGateVerificationResponseUI(scanStatusType, serverMessage, attende
         </div>`;
     }
 
-    // Dynamic coloring configuration assignments tailored to the specific domain selections
+    // Dynamic coloring configuration assignments tailored to the newly initialized HB prefix
     let domainContainerStyle = "bg-purple-900/40 border-purple-500/60 text-purple-300";
     if (attendeeRecordObj.domainSelection.indexOf("Blue Economy") > -1) {
       domainContainerStyle = "bg-blue-900/40 border-blue-500/60 text-blue-300";
@@ -147,11 +147,26 @@ function renderGateVerificationResponseUI(scanStatusType, serverMessage, attende
     }
 
     let foodColorStyle = attendeeRecordObj.foodPreference === "VEG" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-amber-500/10 text-amber-400 border border-amber-500/20";
+    
     let referralRowHtml = attendeeRecordObj.referredBy ? `
       <div class="flex items-center justify-between border-b border-slate-800/60 pb-1.5">
         <span class="text-slate-500 font-bold uppercase tracking-wider">Referred By:</span>
         <span class="font-extrabold text-purple-400 uppercase">${attendeeRecordObj.referredBy}</span>
       </div>` : "";
+
+    // Display accommodation indicators and verify documentation parameters cleanly
+    let hasAccom = attendeeRecordObj.accommodation === 'YES';
+    let accomBadgeHtml = `<span class="font-black px-2 py-0.5 rounded text-[10px] ${hasAccom ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-400'}">${attendeeRecordObj.accommodation || "NO"}</span>`;
+    
+    let docVerificationRowHtml = "";
+    if (hasAccom) {
+      let documentValid = !!attendeeRecordObj.aadhaarLink;
+      docVerificationRowHtml = `
+        <div class="flex items-center justify-between border-b border-slate-800/60 pb-1.5">
+          <span class="text-slate-500 font-bold uppercase tracking-wider">Accommodation Docs:</span>
+          <span class="font-bold ${documentValid ? 'text-teal-400' : 'text-rose-400'} uppercase">${documentValid ? '✓ Verified [Aadhaar Logged]' : '✗ Missing Aadhaar File'}</span>
+        </div>`;
+    }
 
     container.innerHTML = `
       <div class="space-y-4 animate-fade-in text-slate-200">
@@ -194,8 +209,9 @@ function renderGateVerificationResponseUI(scanStatusType, serverMessage, attende
           ${referralRowHtml}
           <div class="flex items-center justify-between border-b border-slate-800/60 pb-1.5">
             <span class="text-slate-500 font-bold uppercase tracking-wider">Housing Accommodation:</span>
-            <span class="font-black px-2 py-0.5 rounded text-[10px] ${attendeeRecordObj.accommodation === 'YES' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-800 text-slate-400'}">${attendeeRecordObj.accommodation || "NO"}</span>
+            ${accomBadgeHtml}
           </div>
+          ${docVerificationRowHtml}
           <div class="flex items-center justify-between">
             <span class="text-slate-500 font-bold uppercase tracking-wider">Original Arrival Check In:</span>
             <span class="font-mono font-black text-emerald-400">${attendeeRecordObj.checkInTime || "Just Logged"}</span>

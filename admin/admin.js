@@ -121,9 +121,9 @@ function setupModeButtonsViewRoutingControlEngine() {
   Object.keys(routingMap).forEach(btnId => {
     document.getElementById(btnId).addEventListener('click', (e) => {
       Object.keys(routingMap).forEach(id => {
-        document.getElementById(id).className = "view-mode-btn bg-slate-800 text-slate-400 hover:bg-slate-700 font-bold text-xs px-4 py-3 rounded-xl transition tracking-wide cursor-pointer whitespace-nowrap";
+        document.getElementById(id).className = "view-mode-btn bg-slate-800 text-slate-400 hover:bg-slate-700 font-bold text-xs px-4 py-2.5 rounded-xl transition tracking-wide cursor-pointer whitespace-nowrap";
       });
-      e.target.className = "view-mode-btn bg-blue-600 text-white font-bold text-xs px-4 py-3 rounded-xl shadow transition tracking-wide cursor-pointer whitespace-nowrap";
+      e.target.className = "view-mode-btn bg-blue-600 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow transition tracking-wide cursor-pointer whitespace-nowrap";
       dashboardViewMode = routingMap[btnId];
       handleStructuralViewLayoutAlterators();
     });
@@ -140,17 +140,13 @@ function setupAttendanceDomainTabEngine() {
   Object.keys(buttonsMap).forEach(id => {
     document.getElementById(id).addEventListener('click', (e) => {
       Object.keys(buttonsMap).forEach(bId => {
-        document.getElementById(bId).className = "bg-slate-800 text-slate-400 hover:bg-slate-700 text-xs font-bold px-3 py-2 rounded-xl transition cursor-pointer";
+        document.getElementById(bId).className = "bg-slate-800 text-slate-400 hover:bg-slate-700 text-xs font-bold px-4 py-2.5 rounded-xl transition cursor-pointer whitespace-nowrap";
       });
-      e.target.className = "bg-purple-600 text-white text-xs font-bold px-3 py-2 rounded-xl shadow transition cursor-pointer";
+      e.target.className = "bg-purple-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow transition cursor-pointer whitespace-nowrap";
       activeAttendanceDomainTab = buttonsMap[id];
       renderTargetedDataGrid();
     });
   });
-
-  document.getElementById('exportCsvBlueEcoBtn').addEventListener('click', () => processCsvExportTask("Blue Economy"));
-  document.getElementById('exportCsvMindspaceBtn').addEventListener('click', () => processCsvExportTask("Human Behaviour & Civic Innovation"));
-  document.getElementById('exportCsvArtsCultureBtn').addEventListener('click', () => processCsvExportTask("Arts & Culture"));
 }
 
 function handleStructuralViewLayoutAlterators() {
@@ -440,7 +436,6 @@ function renderTargetedDataGrid() {
         `;
       }
 
-      // Dynamic sub-labels data compilation checks
       let foodColorClass = user.foodPreference === "VEG" ? "text-emerald-400" : "text-amber-500";
       let referredBySnippet = user.referredBy ? ` | <span class="text-purple-300 font-medium">Ref: ${user.referredBy}</span>` : "";
 
@@ -452,7 +447,7 @@ function renderTargetedDataGrid() {
             <div class="text-[10px] text-slate-400 font-mono mt-0.5 max-w-[130px] truncate">${user.email}</div>
             <div class="text-[9px] text-blue-400 font-bold tracking-wider uppercase mt-0.5">
               ${user.gender || "UNKNOWN"} <span class="text-white font-black font-mono ml-2 select-all">${user.phone || ""}</span>
-              <span class="${foodColorClass} font-black ml-2">[${user.foodPreference || "N/A"}]</span>${referredBySnippet}
+              <span class="${foodColorClass} font-black ml-2">[${user.foodPreference || "VEG"}]</span>${referredBySnippet}
             </div>
           </td>
           <td class="px-4 py-3.5">
@@ -460,7 +455,7 @@ function renderTargetedDataGrid() {
             <div class="uppercase text-[10px] text-slate-400 mt-0.5 max-w-[130px] truncate">
               ${user.branch} <span class="text-slate-500 font-normal">[${cohortLabels[user.year] || "UNKNOWN"} - <span class="text-white font-black">Y${user.year}</span>]</span>
             </div>
-            <div class="text-[10px] text-slate-400 font-mono mt-0.5">ID: <span class="text-slate-200 font-bold">${user.idCardNumber || "N/A"}</span></div>
+            <div class="text-[10px] text-slate-400 font-mono mt-0.5">ID: <span class="text-slate-200 font-bold select-all">${user.idCardNumber || "N/A"}</span></div>
           </td>
           <td class="px-4 py-3.5 font-semibold text-slate-300 max-w-[140px] truncate" title="${user.domainSelection}">${user.domainSelection || "Unassigned"}</td>
           <td class="px-4 py-3.5 text-center font-extrabold ${user.accommodation === 'YES' ? 'text-emerald-400' : 'text-slate-600'}">${user.accommodation || "NO"}</td>
@@ -506,10 +501,7 @@ function renderTargetedDataGrid() {
       return `
         <tr class="hover:bg-slate-950/20 transition duration-100 border-b border-slate-700/20 ${isCheckedIn ? 'bg-blue-950/10' : ''}">
           <td class="px-4 py-3.5 font-mono font-bold text-slate-300 whitespace-nowrap">${user.regId}</td>
-          <td class="px-4 py-3.5">
-            <div class="font-bold text-slate-100 max-w-[200px] truncate" title="${user.fullName}">${user.fullName}</div>
-            <div class="text-[10px] text-slate-400 font-mono mt-0.5 whitespace-nowrap">${user.phone}</div>
-          </td>
+          <td class="px-4 py-3.5"><div class="font-bold text-slate-100 max-w-[200px] truncate" title="${user.fullName}">${user.fullName}</div><div class="text-[10px] text-slate-400 font-mono mt-0.5 whitespace-nowrap">${user.phone}</div></td>
           <td class="px-4 py-3.5"><div class="uppercase font-bold text-slate-300 max-w-[200px] truncate" title="${user.college}">${user.college}</div><div class="uppercase text-[10px] text-slate-400 mt-0.5 max-w-[200px] truncate" title="${user.branch}">${user.branch}</div></td>
           <td class="px-4 py-3.5 font-black text-center whitespace-nowrap">${cohortLabels[user.year] || "UNKNOWN"} [Y${user.year}]</td>
           <td class="px-4 py-3.5 text-center font-medium text-slate-400 whitespace-nowrap">${user.dateOfReg}</td>
