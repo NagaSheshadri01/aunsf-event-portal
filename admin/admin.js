@@ -1,7 +1,7 @@
 const BACKEND_API_URL = "https://script.google.com/macros/s/AKfycbxV5iYwbY8xBoMnki_N8qKosRk2mu9kukqm8Hqg4quYT6OtFLJyYiQi_rnXTEdjzTr9/exec"; 
 
 let masterRecordsCache = [];
-let lastDataHashStr = ""; // Cryptographic signature to prevent redundant UI paint cycles
+let lastDataHashStr = ""; // Direct memory block footprint to prevent UI resetting anomalies
 let dashboardViewMode = "registration"; 
 let activeAttendanceDomainTab = "Human Behaviour & Civic Innovation"; 
 let expandedCollegesMap = {};           
@@ -17,7 +17,7 @@ let systemConfigState = {
 window.onload = () => {
   handleStructuralViewLayoutAlterators();
 
-  // Instant Local Bootstrapping Loader
+  // Instant Bootstrapping from Local Cache
   const cachedLocalRecordDataString = localStorage.getItem('aunsf_master_system_cache');
   if (cachedLocalRecordDataString) {
     try {
@@ -26,10 +26,10 @@ window.onload = () => {
       calculateSystemMetricsAndDistributions();
       buildDynamicAlphaSortedFilterDropdowns();
       renderTargetedDataGrid();
-    } catch (err) { console.error("Cache memory read skip: ", err); }
+    } catch (err) { console.error("Cache read bypassed: ", err); }
   }
 
-  // Event Listeners UI Bindings
+  // Bind Event Listeners
   document.getElementById('refreshBtn').addEventListener('click', () => synchronizeCloudLedger(false));
   document.getElementById('exportCsvBtn').addEventListener('click', () => processCsvExportTask("GLOBAL_ALL"));
   document.getElementById('clearFiltersBtn').addEventListener('click', clearAllActiveFilters);
@@ -44,10 +44,10 @@ window.onload = () => {
     document.getElementById(id).addEventListener('input', renderTargetedDataGrid);
   });
 
-  // Trigger Immediate Background Polling Network Pipeline
+  // Execute Immediate Foreground Sync Pipeline
   synchronizeCloudLedger(false);
   
-  // High Frequency 5-Second Rapid background verification loops
+  // Set Rapid 5-Second Background Poll (Sub-second delta rendering)
   setInterval(() => { synchronizeCloudLedger(true); }, 5000);
 };
 
@@ -65,19 +65,21 @@ async function synchronizeCloudLedger(isSilentBackgroundPoll = false) {
     const parsedResult = await response.json();
     if (parsedResult.status === "success") {
       
-      // Calculate data signature to see if anything actually changed
+      // Compute footprint hash based on string size and array parameters
       const incomingDataHash = JSON.stringify(parsedResult.records).length + "_" + parsedResult.records.length;
       
       masterRecordsCache = parsedResult.records;
       localStorage.setItem('aunsf_master_system_cache', JSON.stringify(masterRecordsCache));
       localStorage.setItem('aunsf_master_hash', incomingDataHash);
       
-      if (parsedResult.config) {
+      // FIXED CONFIG REVERTING BUG: Only pull price structures if a foreground refresh is requested 
+      // or if you are not currently focusing on an editing operation
+      if (parsedResult.config && (!isSilentBackgroundPoll || document.activeElement.tagName !== "INPUT")) {
         systemConfigState = parsedResult.config;
         updateConfigFieldsInAdminUI();
       }
       
-      // SPEED FIX: Only force the browser to repaint the DOM if new data exists
+      // SPEED FIX: Only force the browser to repaint the DOM elements if new data row entries exist
       if (incomingDataHash !== lastDataHashStr || !isSilentBackgroundPoll) {
         lastDataHashStr = incomingDataHash;
         buildDynamicAlphaSortedFilterDropdowns();
@@ -85,7 +87,7 @@ async function synchronizeCloudLedger(isSilentBackgroundPoll = false) {
         renderTargetedDataGrid();
       }
     }
-  } catch (error) { console.error("Sync interface latency timeout: ", error); }
+  } catch (error) { console.error("Sync channel timeout latency: ", error); }
   finally {
     if (!isSilentBackgroundPoll) {
       btn.innerText = "🔄 Refresh";
@@ -95,10 +97,15 @@ async function synchronizeCloudLedger(isSilentBackgroundPoll = false) {
 }
 
 function updateConfigFieldsInAdminUI() {
-  document.getElementById('regularPriceInput').value = systemConfigState.regularPrice;
-  document.getElementById('earlyBirdPriceInput').value = systemConfigState.earlyBirdPrice;
-  document.getElementById('accommodationPriceInput').value = systemConfigState.accommodationPrice;
-  document.getElementById('earlyBirdModeToggle').checked = systemConfigState.earlyBirdModeActive;
+  const regInput = document.getElementById('regularPriceInput');
+  const ebInput = document.getElementById('earlyBirdPriceInput');
+  const accomInput = document.getElementById('accommodationPriceInput');
+  const toggleInput = document.getElementById('earlyBirdModeToggle');
+
+  if (document.activeElement !== regInput) regInput.value = systemConfigState.regularPrice;
+  if (document.activeElement !== ebInput) ebInput.value = systemConfigState.earlyBirdPrice;
+  if (document.activeElement !== accomInput) accomInput.value = systemConfigState.accommodationPrice;
+  if (document.activeElement !== toggleInput) toggleInput.checked = systemConfigState.earlyBirdModeActive;
 }
 
 async function dispatchConfigUpdateToServer() {
@@ -121,10 +128,10 @@ async function dispatchConfigUpdateToServer() {
     });
     const result = await response.json();
     if (result.status === "success") {
-      alert("✨ " + result.message);
+      alert("✨ Price structure updated and flushed to core sheets!");
       synchronizeCloudLedger(false);
     }
-  } catch (error) { alert("Fault: " + error.toString()); }
+  } catch (error) { alert("Config Save Exception: " + error.toString()); }
   finally { saveBtn.disabled = false; saveBtn.innerText = "💾 Save Configurations"; }
 }
 
@@ -174,9 +181,9 @@ function handleStructuralViewLayoutAlterators() {
   if (dashboardViewMode === "revenue") {
     sidebar.classList.remove('hidden'); metricsGrid.classList.add('hidden'); toolbarContainer.classList.add('hidden'); attendanceTabsBlock.classList.add('hidden');
   } else if (dashboardViewMode === "attendance") {
-    sidebar.classList.add('hidden'); metricsGrid.classList.remove('hidden'); toolbarContainer.classList.remove('hidden'); attendanceTabsBlock.classList.remove('hidden');
+    sidebar.classList.add('hidden'); metricsGrid.classList.remove('hidden'); toolbarContainer.className = toolbarContainer.className.replace("hidden", "").trim(); attendanceTabsBlock.classList.remove('hidden');
   } else {
-    sidebar.classList.add('hidden'); metricsGrid.classList.remove('hidden'); toolbarContainer.classList.remove('hidden'); attendanceTabsBlock.classList.add('hidden');
+    sidebar.classList.add('hidden'); metricsGrid.classList.remove('hidden'); toolbarContainer.className = toolbarContainer.className.replace("hidden", "").trim(); attendanceTabsBlock.classList.add('hidden');
   }
   renderTargetedDataGrid();
 }
@@ -267,7 +274,6 @@ function calculateSystemMetricsAndDistributions() {
   document.getElementById('countCheckedIn').innerText = checkedInCount;
   document.getElementById('revenueCollected').innerText = "₹" + aggregateRevenueCalculated.toLocaleString('en-IN');
 
-  // Fast string mapping builds
   document.getElementById('distributionCollegeArea').innerHTML = Object.keys(colRevMap).sort().map(colKey => {
     const isExpanded = !!expandedCollegesMap[colKey];
     let drilldownHtml = "";
@@ -340,7 +346,7 @@ function renderTargetedDataGrid() {
       </tr>`).join('');
 
   } else if (dashboardViewMode === "registration") {
-    headBlock.innerHTML = `<tr class="bg-slate-900/40 text-slate-400 text-[11px] font-bold"><th class="px-4 py-3">Ticket ID</th><th class="px-4 py-3">Participant Details</th><th class="px-4 py-3">College / Year</th><th class="px-4 py-3">Domain Selection</th><th class="px-4 py-3 text-center">Accom.</th><th class="px-4 py-3">UTR / Verification Vault Links</th><th class="px-4 py-3 text-center">Date</th><th class="px-4 py-3 text-center">EarlyBird</th><th class="px-4 py-3 text-center">Fees</th><th class="px-4 py-3 text-center">Status</th><th class="px-4 py-3 text-right pr-6">Actions</th></tr>`;
+    headBlock.innerHTML = `<tr class="bg-slate-900/40 text-slate-400 text-[11px] font-bold"><th class="px-4 py-3">Ticket ID</th><th class="px-4 py-3">Participant Details</th><th class="px-4 py-3">College / Year</th><th class="px-4 py-3">Domain Selection</th><th class="px-4 py-3 text-center">Accom.</th><th class="px-4 py-3">UTR / Verification Links</th><th class="px-4 py-3 text-center">Date</th><th class="px-4 py-3 text-center">EarlyBird</th><th class="px-4 py-3 text-center">Fees</th><th class="px-4 py-3 text-center">Status</th><th class="px-4 py-3 text-right pr-6">Actions</th></tr>`;
     bodyBlock.innerHTML = filteredRecordDataset.map(user => {
       let trID = user.regId ? `<span class="font-mono font-bold text-slate-200 select-all">${user.regId}</span>` : `<span class="text-slate-600 italic">Unassigned</span>`;
       let badgeStyleClass = user.status === "Approved" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : (user.status === "Rejected" ? "bg-rose-500/10 text-rose-400 border border-rose-500/20" : (user.status === "Checked-in" ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" : "bg-amber-500/10 text-amber-400 border border-amber-500/20"));
@@ -385,7 +391,13 @@ function renderTargetedDataGrid() {
           <td class="px-4 py-3 text-center font-bold">${cohortLabels[user.year] || "UNKNOWN"}</td>
           <td class="px-4 py-3 text-center text-slate-500">${user.dateOfReg}</td>
           <td class="px-4 py-3"><span class="px-2 py-0.5 rounded text-[9px] font-black uppercase ${isCheckedIn ? 'bg-blue-500/10 text-blue-400' : 'bg-emerald-500/10 text-emerald-400'}">${user.status}</span></td>
-          <td class="px-4 py-3 text-right pr-6">${!isCheckedIn ? `<button onclick="dispatchManualAttendanceCheckIn(${user.rowNumber}, '${user.fullName}')" class="bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] px-2.5 py-1 rounded-lg cursor-pointer transition shadow">Mark Gate Entry</button>` : `<span class="font-mono text-emerald-400 text-[11px] font-bold">⏱️ ${user.checkInTime}</span>`}</td>
+          
+          <!-- FIXED ADMIN ROW ID MANUAL CHECKIN ATTENDANCE INTEGRATION HOOK -->
+          <td class="px-4 py-3 text-right pr-6">
+            ${!isCheckedIn ? `
+              <button onclick="dispatchManualAttendanceCheckIn(${user.rowNumber}, '${user.fullName}')" class="bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] px-2.5 py-1 rounded-lg cursor-pointer transition shadow">Mark Gate Entry</button>
+            ` : `<span class="font-mono text-emerald-400 text-[11px] font-bold">⏱️ ${user.checkInTime}</span>`}
+          </td>
         </tr>`;
     }).join('');
   }
@@ -421,14 +433,17 @@ async function dispatchEarlyBirdToggleState(rowNumber, targetValueString, userAc
 }
 
 async function dispatchManualAttendanceCheckIn(rowNumber, attendeeName) {
-  if (!confirm(`Log entrance attendance gate scan for ${attendeeName}?`)) return;
+  if (!confirm(`Log manual entry gate confirmation for ${attendeeName}?`)) return;
   try {
+    // PASSES EXPLICIT ROWhUMBER PROPERTY TO BACKEND INSTANT PROCESSING ENGINE
     const response = await fetch(BACKEND_API_URL, {
       method: 'POST',
       body: JSON.stringify({ action: "checkin", rowNumber: parseInt(rowNumber, 10) }) 
     });
-    const result = await response.json(); alert(result.message); synchronizeCloudLedger(false);
-  } catch (error) { alert("Error: " + error.toString()); }
+    const result = await response.json(); 
+    alert(result.message); 
+    synchronizeCloudLedger(false);
+  } catch (error) { alert("Error updating row attendance: " + error.toString()); }
 }
 
 async function dispatchAdminOperationAction(rowNumber, actionName) {
